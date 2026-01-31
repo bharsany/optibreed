@@ -1,0 +1,84 @@
+<!DOCTYPE html>
+<html lang="hu">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>{% block title %}Pedigré Elemző{% endblock %}</title>
+    <style>
+        :root {
+            --primary-color: #005A9C;
+            --secondary-color: #003F6E;
+            --background-color: #f4f7f6;
+            --container-bg: #ffffff;
+            --text-color: #333;
+            --header-color: #ffffff;
+            --border-radius: 8px;
+            --box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+        }
+        body { 
+            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+            margin: 0;
+            background-color: var(--background-color);
+            color: var(--text-color);
+        }
+        header {
+            background-color: var(--primary-color);
+            color: var(--header-color);
+            padding: 1rem 2rem;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+            text-align: center;
+        }
+        header a { color: white; text-decoration: none; font-size: 1.5rem; font-weight: bold; }
+        main.container { 
+            max-width: 1200px; 
+            margin: 2rem auto; 
+            padding: 2rem;
+            background-color: var(--container-bg);
+            border-radius: var(--border-radius);
+            box-shadow: var(--box-shadow);
+        }
+        h1, h2, h3 { color: var(--secondary-color); border-bottom: 2px solid #eee; padding-bottom: 0.5rem; margin-top:0; }
+        .button, .action-button {
+            display: inline-block;
+            background-color: var(--primary-color);
+            color: white !important; /* important to override link colors */
+            padding: 12px 24px;
+            border: none;
+            border-radius: var(--border-radius);
+            text-decoration: none;
+            font-weight: bold;
+            font-size: 1rem;
+            cursor: pointer;
+            text-align: center;
+            transition: background-color 0.3s ease;
+        }
+        .button:hover, .action-button:hover { background-color: var(--secondary-color); }
+        .error-list { color: #D8000C; background-color: #FFD2D2; border: 1px solid #D8000C; border-radius: var(--border-radius); padding: 1rem; margin-bottom: 1rem; }
+        .pedigree-table, .result-table {
+            width: 100%;
+            border-collapse: collapse;
+            margin-top: 1.5rem;
+            box-shadow: 0 2px 3px rgba(0,0,0,0.05);
+        }
+        .pedigree-table th, .result-table th, .pedigree-table td, .result-table td {
+            padding: 12px 15px;
+            border: 1px solid #ddd;
+            text-align: center;
+        }
+        .pedigree-table th, .result-table th {
+            background-color: #f2f7fb;
+            font-weight: 600;
+            color: var(--secondary-color);
+        }
+        .pedigree-table tr:nth-child(even), .result-table tr:nth-child(even) { background-color: #f9f9f9; }
+    </style>
+</head>
+<body>
+    <header>
+        <a href="{{ url_for('pedigree.upload') }}">Pedigré Elemző Alkalmazás</a>
+    </header>
+    <main class="container">
+        {% block content %}{% endblock %}
+    </main>
+</body>
+</html>

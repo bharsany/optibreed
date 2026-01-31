@@ -1,0 +1,56 @@
+{% extends 'base.html' %}
+{% block title %}Fájl Feltöltés - Pedigré Elemző{% endblock %}
+
+{% block content %}
+<style>
+    .upload-box { text-align: center; padding: 2rem; border: 2px dashed #ccc; border-radius: var(--border-radius); background-color: #fafafa; }
+    .upload-box h1 { margin-top: 0; }
+    .upload-box p { margin-bottom: 1.5rem; color: #666; }
+    .upload-box input[type="file"] { display: none; }
+    .file-label {
+        display: inline-block;
+        padding: 12px 20px;
+        background-color: var(--secondary-color);
+        color: white;
+        border-radius: var(--border-radius);
+        cursor: pointer;
+        font-weight: bold;
+    }
+    .file-label:hover { background-color: var(--primary-color); }
+    #file-name { margin-top: 1rem; font-style: italic; color: #555; }
+</style>
+
+<div class="upload-box">
+    <h1>Pedigré Fájl Feltöltése</h1>
+    <p>Kérjük, válasszon ki egy CSV formátumú pedigré fájlt a feltöltéshez.</p>
+
+    {% if errors %}
+        <div class="error-list">
+            <ul>
+                {% for error in errors %}
+                    <li>{{ error }}</li>
+                {% endfor %}
+            </ul>
+        </div>
+    {% endif %}
+
+    <form method="post" enctype="multipart/form-data">
+        <label for="pedigree_file" class="file-label">Fájl Kiválasztása</label>
+        <input type="file" id="pedigree_file" name="pedigree_file" onchange="updateFileName()" required>
+        <p id="file-name">Nincs fájl kiválasztva.</p>
+        <button type="submit" class="button">Feltöltés és Elemzés</button>
+    </form>
+</div>
+
+<script>
+function updateFileName() {
+    const input = document.getElementById('pedigree_file');
+    const fileNameDisplay = document.getElementById('file-name');
+    if (input.files.length > 0) {
+        fileNameDisplay.textContent = input.files[0].name;
+    } else {
+        fileNameDisplay.textContent = 'Nincs fájl kiválasztva.';
+    }
+}
+</script>
+{% endblock %}

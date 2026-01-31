@@ -1,0 +1,224 @@
+{% extends 'base.html' %}
+{% block title %}Párosítási Szimuláció Eredményei{% endblock %}
+
+{% block content %}
+<style>
+    .result-table {
+        width: 100%;
+        border-collapse: collapse;
+        margin-top: 1rem;
+    }
+    .result-table th, .result-table td {
+        border: 1px solid #ccc;
+        padding: 12px;
+        text-align: left;
+    }
+    .result-table th {
+        background-color: #f2f2f2;
+        position: relative; /* For the sort arrow */
+    }
+    .result-table th.sortable:hover { cursor: pointer; background-color: #e9e9e9; }
+    .result-table th.sortable::after {
+        content: ' \2195';
+        font-size: 0.8em;
+        opacity: 0.5;
+        position: absolute;
+        right: 8px;
+    }
+    .result-table tbody tr:hover { background-color: #f1f1f1; }
+    .result-table tbody tr:nth-child(even) { background-color: #f9f9f9; }
+
+    .highlight-best {
+        background-color: #e6ffed !important; /* Halvány pasztelzöld */
+    }
+
+    .modal { display: none; position: fixed; z-index: 1000; left: 0; top: 0; width: 100%; height: 100%; overflow: auto; background-color: rgba(0,0,0,0.5); animation: fadeIn 0.3s; }
+    .modal-content { background-color: #fefefe; margin: 10% auto; padding: 25px; border: 1px solid #888; width: 80%; max-width: 700px; border-radius: var(--border-radius); box-shadow: 0 5px 15px rgba(0,0,0,0.3); animation: slideIn 0.3s; }
+    .close-button { color: #aaa; float: right; font-size: 28px; font-weight: bold; cursor: pointer; }
+    .close-button:hover, .close-button:focus { color: black; }
+
+    @keyframes fadeIn { from {opacity: 0;} to {opacity: 1;} }
+    @keyframes slideIn { from {transform: translateY(-50px);} to {transform: translateY(0);} }
+</style>
+
+<h1>Párosítási Szimuláció Eredményei</h1>
+
+{% if simulation_data %}
+    <p>A táblázat a kiválasztott hímek (apák) és a hozzájuk rendelt összesített beltenyésztési együttható (IBC) alapján készült. A legalacsonyabb IBC-vel rendelkező, legkedvezőbb sort zöld háttér jelöli. Kattintson a fejlécekre a rendezéshez.</p>
+
+    <table class="result-table" id="main-simulation-table">
+        <thead>
+            <tr>
+                <th class="sortable">Hímegyed (Apa) Azonosító</th>
+                <th class="sortable">Tenyészet</th>
+                <th class="sortable">Összesített Utód IBC</th>
+                <th>Részletek</th>
+            </tr>
+        </thead>
+        <tbody>
+            {% for sire_data in simulation_data %}
+            <tr>
+                <td>{{ sire_data.sire_id }} ({{ '%.4f'|format(sire_data.sire_ibc) }})</td>
+                <td>{{ sire_data.tenyeszet }}</td>
+                <td>{{ '%.4f'|format(sire_data.total_ibc) }}</td>
+                <td>
+                    <button class="button" onclick="openModal('modal-{{ sire_data.sire_id }}')">Részletek</button>
+                </td>
+            </tr>
+            {% endfor %}
+        </tbody>
+    </table>
+
+    <div style="text-align: center; margin-top: 2rem;">
+        <a href="{{ url_for('pedigree.mating_selection', filename=filename) }}" class="button">Vissza a Kiválasztáshoz</a>
+        <button class="action-button" onclick="exportToCSV()">Adatok exportálása CSV-be</button>
+    </div>
+
+    <!-- Modals for each sire -->
+    {% for sire_data in simulation_data %}
+    <div id="modal-{{ sire_data.sire_id }}" class="modal">
+        <div class="modal-content">
+            <span class="close-button" onclick="closeModal('modal-{{ sire_data.sire_id }}')">&times;</span>
+            <h2>Részletek: {{ sire_data.sire_id }} Azonosítójú Hím</h2>
+            <table class="result-table">
+                <thead>
+                    <tr>
+                        <th>Nőstény (Anya) Azonosító</th>
+                        <th>Tenyészet</th>
+                        <th>Várható Utód IBC</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for detail in sire_data.details %}
+                    <tr>
+                        <td>{{ detail.dam_id }} ({{ '%.4f'|format(detail.dam_ibc) }})</td>
+                        <td>{{ detail.dam_tenyeszet }}</td>
+                        <td>{{ '%.4f'|format(detail.offspring_ibc) }}</td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+             <div style="text-align: right; margin-top: 1rem;">
+                <button class="button" onclick="closeModal('modal-{{ sire_data.sire_id }}')">Bezárás</button>
+            </div>
+        </div>
+    </div>
+    {% endfor %}
+
+{% else %}
+    <p>Nem történt kiválasztás, vagy hiba lépett fel a szimuláció során. Kérjük, válasszon ki legalább egy hímet és egy nőstényt.</p>
+    <a href="{{ url_for('pedigree.mating_selection', filename=filename) }}" class="button">Vissza a Kiválasztáshoz</a>
+{% endif %}
+
+<script>
+    function openModal(modalId) { document.getElementById(modalId).style.display = "block"; }
+    function closeModal(modalId) { document.getElementById(modalId).style.display = "none"; }
+
+    window.onclick = function(event) {
+        const modals = document.getElementsByClassName('modal');
+        for (let i = 0; i < modals.length; i++) {
+            if (event.target == modals[i]) {
+                modals[i].style.display = "none";
+            }
+        }
+    }
+
+    function exportToCSV() {
+        let csvContent = "data:text/csv;charset=utf-8,Apa ID,Apa IBC,Apa Tenyészet,Anya ID,Anya IBC,Anya Tenyészet,Várható Utód IBC\r\n";
+        const data = {{ simulation_data|tojson }};
+        
+        data.forEach(sire => {
+            sire.details.forEach(pairing => {
+                const row = [
+                    sire.sire_id, sire.sire_ibc.toFixed(4), sire.tenyeszet,
+                    pairing.dam_id, pairing.dam_ibc.toFixed(4), pairing.dam_tenyeszet,
+                    pairing.offspring_ibc.toFixed(4)
+                ].join(",");
+                csvContent += row + "\r\n";
+            });
+        });
+
+        const encodedUri = encodeURI(csvContent);
+        const link = document.createElement("a");
+        link.setAttribute("href", encodedUri);
+        link.setAttribute("download", "parositas_szimulacio_eredmenyek.csv");
+        document.body.appendChild(link); 
+        link.click();
+        document.body.removeChild(link);
+    }
+
+    function updateHighlight(tableId) {
+        const table = document.getElementById(tableId);
+        if (!table) return;
+        const tbody = table.querySelector('tbody');
+        const rows = tbody.querySelectorAll('tr');
+        let bestRow = null;
+        let minIbc = Infinity;
+
+        rows.forEach(row => {
+            row.classList.remove('highlight-best');
+            const ibcCell = row.children[2];
+            const ibcValue = parseFloat(ibcCell.textContent);
+            if (!isNaN(ibcValue) && ibcValue < minIbc) {
+                minIbc = ibcValue;
+                bestRow = row;
+            }
+        });
+
+        if (bestRow) {
+            bestRow.classList.add('highlight-best');
+        }
+    }
+    
+    function makeTableSortable(tableId) {
+        const table = document.getElementById(tableId);
+        if (!table) return;
+        const headers = table.querySelectorAll('th.sortable');
+        const tbody = table.querySelector('tbody');
+        let directions = Array.from(headers).map(() => '');
+
+        headers.forEach((header, index) => {
+            header.addEventListener('click', () => {
+                const rows = Array.from(tbody.querySelectorAll('tr'));
+                const currentDirection = directions[index] || 'asc';
+                const newDirection = currentDirection === 'asc' ? 'desc' : 'asc';
+                
+                const sortedRows = rows.sort((a, b) => {
+                    const cellA = a.children[index].textContent.trim();
+                    const cellB = b.children[index].textContent.trim();
+                    let valA, valB;
+
+                    if (index === 0) { // Sire ID (IBC)
+                        valA = parseFloat(cellA.split(' ')[0]);
+                        valB = parseFloat(cellB.split(' ')[0]);
+                    } else if (index === 2) { // Total IBC
+                        valA = parseFloat(cellA);
+                        valB = parseFloat(cellB);
+                    } else { // Farm (string)
+                        valA = cellA;
+                        valB = cellB;
+                    }
+
+                    if (valA < valB) return newDirection === 'asc' ? -1 : 1;
+                    if (valA > valB) return newDirection === 'asc' ? 1 : -1;
+                    return 0;
+                });
+
+                tbody.innerHTML = '';
+                sortedRows.forEach(row => tbody.appendChild(row));
+                
+                // Re-apply the highlight after sorting
+                updateHighlight(tableId);
+
+                directions.fill('');
+                directions[index] = newDirection;
+            });
+        });
+    }
+
+    document.addEventListener('DOMContentLoaded', () => {
+        makeTableSortable('main-simulation-table');
+        updateHighlight('main-simulation-table');
+    });
+</script>
+{% endblock %}

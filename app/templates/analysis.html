@@ -1,0 +1,16 @@
+{% extends 'base.html' %}
+{% block title %}Beltenyésztési Elemzés Eredményei{% endblock %}
+
+{% block content %}
+    <h1>Elemzés Eredményei: Algoritmusok Összehasonlítása</h1>
+    <p>Az alábbi táblázat egy helyen mutatja a két különböző algoritmussal számított beltenyésztési együtthatókat (IBC). A <strong>Táblázatos Metódus</strong> az iparági standard és a pontosabb eredményt adja, különösen összetett vagy hibás pedigrék esetén.</p>
+    
+    <div class="table-container">
+        {{ analysis_data|safe }}
+    </div>
+
+    <div style="text-align: center; margin-top: 2.5rem; display: flex; justify-content: center; gap: 1rem;">
+        <a href="{{ url_for('pedigree.upload') }}" class="button">Új Fájl Elemzése</a>
+        <a href="{{ url_for('pedigree.mating_selection', filename=filename) }}" class="action-button">Párosítás Optimalizálása</a>
+    </div>
+{% endblock %}

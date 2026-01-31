@@ -1,0 +1,30 @@
+{% extends 'base.html' %}
+{% block title %}Pedigré Adatok Megtekintése{% endblock %}
+
+{% block content %}
+    <h1>Pedigré Adatok</h1>
+
+    {% if errors %}
+        <div class="error-list">
+            <strong>Hibák a pedigrében:</strong>
+            <ul>
+                {% for error in errors %}
+                    <li>{{ error }}</li>
+                {% endfor %}
+            </ul>
+            <p>Kérjük, javítsa a fájlt és töltse fel újra.</p>
+        </div>
+    {% else %}
+        <p>A pedigré fájl sikeresen beolvasva. A lenti táblázat tartalmazza a nyers adatokat. Kattintson az "Elemzés Indítása" gombra a beltenyésztési együtthatók kiszámításához.</p>
+    {% endif %}
+
+    <div class="table-container">
+        {{ data|safe }}
+    </div>
+
+    {% if not errors %}
+        <div style="text-align: center; margin-top: 2rem;">
+            <a href="{{ url_for('pedigree.analysis', filename=filename) }}" class="action-button">Elemzés Indítása</a>
+        </div>
+    {% endif %}
+{% endblock %}
