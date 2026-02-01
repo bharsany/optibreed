@@ -1,0 +1,140 @@
+{% extends 'base.html' %}
+{% block title %}Párosítási Kiválasztás - OptiBreed{% endblock %}
+
+{% block content %}
+<style>
+    .selection-container { display: flex; gap: 2rem; }
+    .selection-box { flex: 1; border: 1px solid #ccc; border-radius: var(--border-radius); padding: 1rem; }
+    .selection-box h2 { margin-top: 0; border-bottom: 2px solid var(--primary-color); padding-bottom: 0.5rem; }
+    .search-bar { width: 100%; padding: 0.5rem; margin-bottom: 1rem; border-radius: var(--border-radius); border: 1px solid #ddd; }
+    .animal-list { list-style: none; padding: 0; margin: 0; max-height: 400px; overflow-y: auto; border: 1px solid #eee; }
+    .animal-list li { padding: 0.5rem; cursor: pointer; border-bottom: 1px solid #eee; }
+    .animal-list li:hover { background-color: #f0f0f0; }
+    .animal-list li.selected { background-color: var(--primary-color); color: white; font-weight: bold; }
+    .selected-animals { margin-top: 1rem; }
+    .selected-animals span { display: inline-block; background-color: #e0e0e0; padding: 5px 10px; border-radius: 12px; margin: 2px; }
+    #export-button { margin-top: 2rem; }
+</style>
+
+<div class="container">
+    <h1>Párosítási Kiválasztás</h1>
+    <p>Válassza ki a tenyészállatokat a szimulációhoz. Használja a keresőt a listák szűréséhez, majd kattintson az állatokra a kiválasztáshoz.</p>
+
+    <div class="selection-container">
+        <!-- Sires Selection Box -->
+        <div class="selection-box">
+            <h2>Apák (Hímek)</h2>
+            <input type="text" id="sire-search" class="search-bar" placeholder="Keresés az apák között...">
+            <ul id="sire-list" class="animal-list"></ul>
+            <h3>Kiválasztott Apák:</h3>
+            <div id="selected-sires" class="selected-animals"></div>
+        </div>
+
+        <!-- Dams Selection Box -->
+        <div class="selection-box">
+            <h2>Anyák (Nőstények)</h2>
+            <input type="text" id="dam-search" class="search-bar" placeholder="Keresés az anyák között...">
+            <ul id="dam-list" class="animal-list"></ul>
+            <h3>Kiválasztott Anyák:</h3>
+            <div id="selected-dams" class="selected-animals"></div>
+        </div>
+    </div>
+
+    <form id="export-form" method="POST" action="{{ url_for('main.export_results') }}">
+        <input type="hidden" name="session_id" value="{{ session_id }}">
+        <input type="hidden" id="sire_ids" name="sire_ids">
+        <input type="hidden" id="dam_ids" name="dam_ids">
+        <button type="submit" id="export-button" class="button">Szimuláció & Exportálás Excelbe</button>
+    </form>
+</div>
+
+<script>
+document.addEventListener('DOMContentLoaded', () => {
+    const session_id = "{{ session_id }}";
+    const sireList = document.getElementById('sire-list');
+    const damList = document.getElementById('dam-list');
+    const sireSearch = document.getElementById('sire-search');
+    const damSearch = document.getElementById('dam-search');
+    const selectedSiresDiv = document.getElementById('selected-sires');
+    const selectedDamsDiv = document.getElementById('selected-dams');
+    const sireIdsInput = document.getElementById('sire_ids');
+    const damIdsInput = document.getElementById('dam_ids');
+
+    let allSires = [];
+    let allDams = [];
+    let selectedSireIds = new Set();
+    let selectedDamIds = new Set();
+
+    async function fetchAnimals() {
+        try {
+            const response = await fetch(`/pedigree/animals/${session_id}`);
+            if (!response.ok) {
+                throw new Error(`Server error: ${response.statusText}`);
+            }
+            const data = await response.json();
+            allSires = data.sires;
+            allDams = data.dams;
+            renderLists();
+        } catch (error) {
+            console.error("Error fetching animals:", error);
+            alert("Hiba az állatok adatainak lekérése közben.");
+        }
+    }
+
+    function renderLists(sireFilter = '', damFilter = '') {
+        renderAnimalList(sireList, allSires, selectedSireIds, sireFilter);
+        renderAnimalList(damList, allDams, selectedDamIds, damFilter);
+        updateSelectedDisplays();
+    }
+
+    function renderAnimalList(listElement, animals, selectedIds, filter) {
+        listElement.innerHTML = '';
+        const filteredAnimals = animals.filter(animal => animal.animal_id.toString().includes(filter));
+        
+        filteredAnimals.forEach(animal => {
+            const li = document.createElement('li');
+            li.textContent = animal.animal_id;
+            li.dataset.id = animal.animal_id;
+            if (selectedIds.has(animal.animal_id.toString())) {
+                li.classList.add('selected');
+            }
+            li.addEventListener('click', () => toggleSelection(selectedIds, animal.animal_id.toString(), li));
+            listElement.appendChild(li);
+        });
+    }
+
+    function toggleSelection(selectedIds, id, listItem) {
+        if (selectedIds.has(id)) {
+            selectedIds.delete(id);
+            listItem.classList.remove('selected');
+        } else {
+            selectedIds.add(id);
+            listItem.classList.add('selected');
+        }
+        updateSelectedDisplays();
+    }
+
+    function updateSelectedDisplays() {
+        updateSelectedDisplay(selectedSiresDiv, selectedSireIds);
+        updateSelectedDisplay(selectedDamsDiv, selectedDamIds);
+        sireIdsInput.value = Array.from(selectedSireIds).join(',');
+        damIdsInput.value = Array.from(selectedDamIds).join(',');
+    }
+
+    function updateSelectedDisplay(div, selectedIds) {
+        div.innerHTML = '';
+        selectedIds.forEach(id => {
+            const span = document.createElement('span');
+            span.textContent = id;
+            div.appendChild(span);
+        });
+    }
+
+    sireSearch.addEventListener('input', () => renderLists(sireSearch.value, damSearch.value));
+    damSearch.addEventListener('input', () => renderLists(sireSearch.value, damSearch.value));
+
+    // Initial load
+    fetchAnimals();
+});
+</script>
+{% endblock %}

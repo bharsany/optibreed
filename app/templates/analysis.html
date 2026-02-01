@@ -10,7 +10,7 @@
     </div>
 
     <div style="text-align: center; margin-top: 2.5rem; display: flex; justify-content: center; gap: 1rem;">
-        <a href="{{ url_for('pedigree.upload') }}" class="button">Új Fájl Elemzése</a>
-        <a href="{{ url_for('pedigree.mating_selection', filename=filename) }}" class="action-button">Párosítás Optimalizálása</a>
+        <a href="{{ url_for('index') }}" class="button">Új fájl elemzése</a>
+        <a href="{{ url_for('pedigree.mating_selection', filename=filename) }}" class="action-button">Párosítás optimalizálása</a>
     </div>
 {% endblock %}

@@ -1,15 +1,6 @@
-from flask import Flask
-import os
+from app import create_app
 
-app = Flask(__name__, template_folder='app/templates')
+app = create_app()
 
-# Hardcoded secret key for session management
-app.config['SECRET_KEY'] = 'a-temporary-but-very-secret-key-that-will-be-changed-later'
-
-# Register the blueprint from the pedigree sub-package
-from app.pedigree.main import bp as pedigree_bp
-app.register_blueprint(pedigree_bp)
-
-@app.route('/')
-def index():
-    return "Welcome to OptiBreed!"
+if __name__ == '__main__':
+    app.run(host='0.0.0.0', port=8080, debug=True)

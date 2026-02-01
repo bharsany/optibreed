@@ -1,9 +1,258 @@
-<!DOCTYPE html>
-<html>
-<head>
-    <title>Animal Pedigree</title>
-</head>
-<body>
-    <h1>Welcome to the Animal Pedigree Application</h1>
-</body>
-</html>
+{% extends 'base.html' %}
+{% block title %}Fájl feltöltés - OptiBreed{% endblock %}
+
+{% block content %}
+<style>
+    .upload-box { text-align: center; padding: 2rem; border: 2px dashed #ccc; border-radius: var(--border-radius); background-color: #fafafa; margin-bottom: 2rem; }
+    .upload-box h1 { margin-top: 0; }
+    .upload-box p { margin-bottom: 1.5rem; color: #666; }
+    .upload-box input[type=\"file\"] { display: none; }
+    .file-label { display: inline-block; padding: 12px 20px; background-color: var(--secondary-color); color: white; border-radius: var(--border-radius); cursor: pointer; font-weight: bold; }
+    .file-label:hover { background-color: var(--primary-color); }
+    #file-name { margin-top: 1rem; font-style: italic; color: #555; }
+    .pagination-controls { padding: 10px 0; text-align: center; margin-bottom: 1rem; }
+    .pagination-controls select, .pagination-controls button { padding: 8px 12px; border: 1px solid #ddd; border-radius: var(--border-radius); margin: 0 5px; cursor: pointer; }
+    #progress-bar-container { width: 100%; background-color: #ddd; border-radius: var(--border-radius); overflow: hidden; }
+    #progress-bar { width: 0%; height: 30px; background-color: var(--primary-color); text-align: center; line-height: 30px; color: white; transition: width 0.5s ease; }
+    #progress-container { margin: 2rem 0; }
+    #progress-status { text-align: center; margin-top: 0.5rem; color: #333; }
+    .error-container { color: #D8000C; background-color: #FFD2D2; border: 1px solid #D8000C; border-radius: var(--border-radius); padding: 1rem; margin-bottom: 1rem; display: none; }
+</style>
+
+<div class="upload-box">
+    <h1>Pedigré fájl feltöltése</h1>
+    <p>Kérjük, válasszon ki egy CSV formátumú pedigré fájlt a feltöltéshez.</p>
+
+    <div class="error-container" id="error-container"></div>
+
+    <form id="upload-form" method="post" enctype="multipart/form-data" action="{{ url_for('main.upload_and_process') }}">
+        <label for="pedigree_file" class="file-label">Fájl kiválasztása</label>
+        <input type="file" id="pedigree_file" name="pedigree_file" onchange="updateFileName()" required style="display: none;">
+        <p id="file-name">Nincs fájl kiválasztva.</p>
+        <button type="submit" class="button">Adatok feltöltése</button>
+    </form>
+</div>
+
+<div style="margin-bottom: 2rem; display: flex; gap: 1rem;">
+    <button id="calculate-ibc" class="button" disabled>Beltenyésztettség számítása</button>
+    <button id="go-to-mating" class="button" disabled>Tovább a párosításhoz</button>
+</div>
+
+<div id="progress-container" style="display: none;">
+    <div id="progress-bar-container">
+        <div id="progress-bar">0%</div>
+    </div>
+    <div id="progress-status">Számítás indul...</div>
+</div>
+
+<div class="grid-container" style="display:none;">
+    <div class="pagination-controls">
+        <span>Oldalankénti sorok: </span>
+        <select id="rows-per-page">
+            <option value="25">25</option>
+            <option value="50">50</option>
+            <option value="100">100</option>
+        </select>
+        <button id="prev-page">Előző</button>
+        <span id="page-info"></span>
+        <button id="next-page">Következő</button>
+    </div>
+    <table class="pedigree-table">
+        <thead id="grid-head"></thead>
+        <tbody id="grid-body"></tbody>
+    </table>
+</div>
+
+<script>
+    let data = [];
+    let currentSessionId = null;
+
+    function updateFileName() {
+        const input = document.getElementById('pedigree_file');
+        const fileNameDisplay = document.getElementById('file-name');
+        fileNameDisplay.textContent = input.files.length > 0 ? `Kiválasztott fájl: ${input.files[0].name}` : 'Nincs fájl kiválasztva.';
+    }
+
+    async function saveDataToServer() {
+        if (!Array.isArray(data) || data.length === 0) return null;
+        try {
+            const response = await fetch('/start_calculation', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify(data),
+            });
+            if (!response.ok) {
+                const errorResult = await response.json();
+                throw new Error(errorResult.error || 'Ismeretlen hiba a munkamenet indításakor.');
+            }
+            const result = await response.json();
+            return result.session_id;
+        } catch (error) {
+            alert(`Hiba az adatok mentésekor: ${error.message}`);
+            return null;
+        }
+    }
+
+    document.getElementById('go-to-mating').addEventListener('click', async () => {
+        const matingButton = document.getElementById('go-to-mating');
+        matingButton.disabled = true;
+        matingButton.textContent = 'Adatok előkészítése...';
+        currentSessionId = await saveDataToServer();
+        if (currentSessionId) {
+            window.location.href = `/pedigree/mating_selection?session_id=${currentSessionId}`;
+        } else {
+            matingButton.disabled = false;
+            matingButton.textContent = 'Tovább a Párosításhoz';
+        }
+    });
+
+    document.getElementById('upload-form').addEventListener('submit', async (event) => {
+        event.preventDefault();
+        const form = event.target;
+        const formData = new FormData(form);
+        const errorContainer = document.getElementById('error-container');
+        const calcButton = document.getElementById('calculate-ibc');
+        const matingButton = document.getElementById('go-to-mating');
+        errorContainer.style.display = 'none';
+        errorContainer.textContent = '';
+
+        try {
+            const response = await fetch(form.action, { method: 'POST', body: formData });
+            const responseText = await response.text();
+            if (!response.ok) {
+                let errorMsg = `HTTP error! Status: ${response.status}`;
+                try { errorMsg = JSON.parse(responseText).error || errorMsg; } catch (e) { errorMsg = responseText.length < 200 ? responseText : errorMsg; }
+                throw new Error(errorMsg);
+            }
+            data = JSON.parse(responseText);
+            currentPage = 1;
+            renderGrid();
+            calcButton.disabled = false;
+            matingButton.disabled = false;
+        } catch (error) {
+            errorContainer.textContent = error.message;
+            errorContainer.style.display = 'block';
+            data = [];
+            renderGrid();
+            calcButton.disabled = true;
+            matingButton.disabled = true;
+        }
+    });
+    
+    const rowsPerPage = document.getElementById('rows-per-page');
+    let currentPage = 1;
+
+    const headerMappings = {
+        'animal_id': 'Egyed azonosító', 'dam_id': 'Anya', 'sire_id': 'Apa', 'farm_id': 'Tenyészet',
+        'gender': 'Ivar', 'ibc_traditional': 'IBC (Hagyományos)', 'ibc_meuwissen': 'IBC (Meuwissen-Luo)'
+    };
+    const headers = ['animal_id', 'dam_id', 'sire_id', 'farm_id', 'gender', 'ibc_traditional', 'ibc_meuwissen'];
+
+    function renderGrid() {
+        const gridContainer = document.querySelector('.grid-container');
+        if (!Array.isArray(data) || data.length === 0) {
+            gridContainer.style.display = 'none';
+            return;
+        }
+        const tableHead = document.getElementById('grid-head');
+        const tableBody = document.getElementById('grid-body');
+        const pageInfo = document.getElementById('page-info');
+        tableHead.innerHTML = ''; tableBody.innerHTML = '';
+        gridContainer.style.display = 'block';
+
+        const rows = parseInt(rowsPerPage.value, 10);
+        let headerHtml = '<tr>';
+        headers.forEach(header => { headerHtml += `<th>${headerMappings[header] || header}</th>`; });
+        headerHtml += '</tr>';
+        tableHead.innerHTML = headerHtml;
+
+        const start = (currentPage - 1) * rows;
+        const end = start + rows;
+        const paginatedData = data.slice(start, end);
+
+        paginatedData.forEach(row => {
+            let rowHtml = '<tr>';
+            headers.forEach(header => {
+                let cellValue = row[header] === null || row[header] === undefined ? '' : row[header];
+                if (header === 'gender') {
+                    cellValue = cellValue === 'F' ? 'Nőstény' : (cellValue === 'M' ? 'Hím' : cellValue);
+                } else if (header === 'ibc_traditional' || header === 'ibc_meuwissen') {
+                    if (typeof cellValue === 'number') {
+                        cellValue = cellValue.toFixed(4);
+                    }
+                }
+                rowHtml += `<td>${cellValue}</td>`;
+            });
+            rowHtml += '</tr>';
+            tableBody.innerHTML += rowHtml;
+        });
+
+        pageInfo.textContent = `Oldal ${currentPage} / ${Math.ceil(data.length / rows)}`;
+    }
+
+    document.addEventListener('DOMContentLoaded', () => {
+        rowsPerPage.addEventListener('change', () => { currentPage = 1; renderGrid(); });
+        document.getElementById('prev-page').addEventListener('click', () => { if (currentPage > 1) { currentPage--; renderGrid(); } });
+        document.getElementById('next-page').addEventListener('click', () => {
+            const rows = parseInt(rowsPerPage.value, 10);
+            const totalPages = Math.ceil(data.length / rows);
+            if (currentPage < totalPages) { currentPage++; renderGrid(); }
+        });
+
+        document.getElementById('calculate-ibc').addEventListener('click', async () => {
+            const calcButton = document.getElementById('calculate-ibc');
+            calcButton.disabled = true;
+            calcButton.textContent = 'Számítás előkészítése...';
+            currentSessionId = await saveDataToServer();
+            if (!currentSessionId) {
+                calcButton.disabled = false;
+                calcButton.textContent = 'Beltenyésztettség Számítása';
+                return;
+            }
+
+            const progressContainer = document.getElementById('progress-container');
+            const progressBar = document.getElementById('progress-bar');
+            const progressStatus = document.getElementById('progress-status');
+            progressContainer.style.display = 'block';
+            progressBar.style.width = '10%';
+            progressBar.textContent = '10%';
+            progressStatus.textContent = 'Kapcsolódás a számítási folyamhoz...';
+            
+            const evtSource = new EventSource(`/calculate_ibcs?session_id=${currentSessionId}`);
+            evtSource.onmessage = function(event) {
+                const eventData = JSON.parse(event.data);
+                if (eventData.progress) {
+                    progressBar.style.width = eventData.progress + '%';
+                    progressBar.textContent = eventData.progress + '%';
+                    progressStatus.textContent = eventData.status;
+                }
+            };
+
+            evtSource.addEventListener('result', function(event) {
+                data = JSON.parse(event.data);
+                currentPage = 1;
+                renderGrid();
+                progressBar.style.width = '100%';
+                progressStatus.textContent = 'Számítás befejezve!';
+                setTimeout(() => { progressContainer.style.display = 'none'; }, 2000);
+                evtSource.close();
+                finalizeButton();
+            });
+
+            evtSource.addEventListener('error', function(event) {
+                let errorMsg = 'Hiba történt a szerverrel való kommunikáció során.';
+                if (event.data) { try { errorMsg = JSON.parse(event.data).error || errorMsg; } catch(e) {} }
+                alert(errorMsg);
+                progressContainer.style.display = 'none';
+                evtSource.close();
+                finalizeButton();
+            });
+
+            function finalizeButton() {
+                calcButton.disabled = false;
+                calcButton.textContent = 'Beltenyésztettség Számítása';
+            }
+        });
+    });
+</script>
+{% endblock %}

@@ -1,5 +1,5 @@
 {% extends 'base.html' %}
-{% block title %}Fájl Feltöltés - Pedigré Elemző{% endblock %}
+{% block title %}Fájl feltöltés - Pedigré elemző{% endblock %}
 
 {% block content %}
 <style>
@@ -21,7 +21,7 @@
 </style>
 
 <div class="upload-box">
-    <h1>Pedigré Fájl Feltöltése</h1>
+    <h1>Pedigré fájl feltöltése</h1>
     <p>Kérjük, válasszon ki egy CSV formátumú pedigré fájlt a feltöltéshez.</p>
 
     {% if errors %}
@@ -35,10 +35,10 @@
     {% endif %}
 
     <form method="post" enctype="multipart/form-data">
-        <label for="pedigree_file" class="file-label">Fájl Kiválasztása</label>
+        <label for="pedigree_file" class="file-label">Fájl kiválasztása</label>
         <input type="file" id="pedigree_file" name="pedigree_file" onchange="updateFileName()" required>
         <p id="file-name">Nincs fájl kiválasztva.</p>
-        <button type="submit" class="button">Feltöltés és Elemzés</button>
+        <button type="submit" class="button">Adatok feltöltése</button>
     </form>
 </div>
 
