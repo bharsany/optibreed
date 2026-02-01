@@ -1,140 +1,266 @@
 {% extends 'base.html' %}
-{% block title %}Párosítási Kiválasztás - OptiBreed{% endblock %}
+{% block title %}Párosítási kiválasztás - OptiBreed{% endblock %}
 
 {% block content %}
 <style>
-    .selection-container { display: flex; gap: 2rem; }
-    .selection-box { flex: 1; border: 1px solid #ccc; border-radius: var(--border-radius); padding: 1rem; }
-    .selection-box h2 { margin-top: 0; border-bottom: 2px solid var(--primary-color); padding-bottom: 0.5rem; }
-    .search-bar { width: 100%; padding: 0.5rem; margin-bottom: 1rem; border-radius: var(--border-radius); border: 1px solid #ddd; }
-    .animal-list { list-style: none; padding: 0; margin: 0; max-height: 400px; overflow-y: auto; border: 1px solid #eee; }
-    .animal-list li { padding: 0.5rem; cursor: pointer; border-bottom: 1px solid #eee; }
-    .animal-list li:hover { background-color: #f0f0f0; }
-    .animal-list li.selected { background-color: var(--primary-color); color: white; font-weight: bold; }
-    .selected-animals { margin-top: 1rem; }
-    .selected-animals span { display: inline-block; background-color: #e0e0e0; padding: 5px 10px; border-radius: 12px; margin: 2px; }
+    :root {
+        --selected-row-bg: #E0F7FA; /* Pastel light blue */
+    }
+    .mating-container { display: flex; flex-direction: column; gap: 3rem; }
+    .selector-section { border: 1px solid #ccc; border-radius: var(--border-radius); padding: 1.5rem; background-color: #fff; }
+    .selector-section h2 { margin-top: 0; padding-bottom: 0.5rem; border-bottom: 2px solid var(--primary-color); }
+    .selector-grid { display: grid; grid-template-columns: 1fr auto 1fr; gap: 1rem; align-items: center; }
+    .grid-panel { border: 1px solid #ddd; border-radius: var(--border-radius); overflow: hidden; display: flex; flex-direction: column; }
+    .grid-header { padding: 0.5rem 1rem; background-color: #f7f7f7; display: flex; align-items: center; gap: 0.5rem; font-weight: bold; color: #333; }
+    .farm-filter { flex-grow: 1; }
+    .farm-filter select { width: 100%; padding: 8px; border-radius: var(--border-radius); border: 1px solid #ccc; }
+    .animal-grid { height: 300px; overflow-y: auto; }
+    .transfer-buttons { display: flex; flex-direction: column; gap: 0.5rem; }
+    .transfer-buttons button { padding: 10px; cursor: pointer; border-radius: var(--border-radius); background-color: var(--secondary-color); color: white; border: none; font-size: 1.2rem; line-height: 1; }
+    .transfer-buttons button:hover { background-color: var(--primary-color); }
+
+    table { width: 100%; border-collapse: collapse; }
+    th, td { padding: 10px; text-align: left; border-bottom: 1px solid #ddd; }
+    th { background-color: #f2f2f2; cursor: pointer; position: sticky; top: 0; user-select: none; }
+    th:hover { background-color: #e9e9e9; }
+    th .sort-indicator { display: inline-block; width: 1em; text-align: left; }
+    th.sort-asc .sort-indicator { content: '▲'; }
+    th.sort-desc .sort-indicator { content: '▼'; }
+    tr.selected-row { background-color: var(--selected-row-bg); }
+    input[type=\"checkbox\"] { margin: 0 5px 0 0; }
+
     #export-button { margin-top: 2rem; }
 </style>
 
 <div class="container">
-    <h1>Párosítási Kiválasztás</h1>
-    <p>Válassza ki a tenyészállatokat a szimulációhoz. Használja a keresőt a listák szűréséhez, majd kattintson az állatokra a kiválasztáshoz.</p>
+    <h1>Párosítási kiválasztás</h1>
+    <p>Válassza ki a tenyészállatokat a szimulációhoz. Bal oldalon láthatók a farm szerint szűrt, elérhető állatok. Jobb oldalon a párosításhoz kiválasztott állatok listája.</p>
 
-    <div class="selection-container">
-        <!-- Sires Selection Box -->
-        <div class="selection-box">
-            <h2>Apák (Hímek)</h2>
-            <input type="text" id="sire-search" class="search-bar" placeholder="Keresés az apák között...">
-            <ul id="sire-list" class="animal-list"></ul>
-            <h3>Kiválasztott Apák:</h3>
-            <div id="selected-sires" class="selected-animals"></div>
+    <div class="mating-container">
+        <!-- Dams Section -->
+        <div class="selector-section">
+            <h2>Anyák (nőstények) kiválasztása</h2>
+            <div class="selector-grid">
+                <div class="grid-panel">
+                    <div class="grid-header">
+                        <label for="dam-farm-filter">Tenyészet:</label>
+                        <div class="farm-filter"><select id="dam-farm-filter"></select></div>
+                    </div>
+                    <div class="animal-grid"><table id="dam-available-grid"></table></div>
+                </div>
+                <div class="transfer-buttons">
+                    <button id="add-dam-btn" title="Kiválasztottak hozzáadása">&gt;&gt;</button>
+                    <button id="remove-dam-btn" title="Kiválasztottak eltávolítása">&lt;&lt;</button>
+                </div>
+                <div class="grid-panel">
+                    <div class="grid-header">Kiválasztott anyák</div>
+                    <div class="animal-grid"><table id="dam-selected-grid"></table></div>
+                </div>
+            </div>
         </div>
 
-        <!-- Dams Selection Box -->
-        <div class="selection-box">
-            <h2>Anyák (Nőstények)</h2>
-            <input type="text" id="dam-search" class="search-bar" placeholder="Keresés az anyák között...">
-            <ul id="dam-list" class="animal-list"></ul>
-            <h3>Kiválasztott Anyák:</h3>
-            <div id="selected-dams" class="selected-animals"></div>
+        <!-- Sires Section -->
+        <div class="selector-section">
+            <h2>Apák (hímek) kiválasztása</h2>
+            <div class="selector-grid">
+                <div class="grid-panel">
+                    <div class="grid-header">
+                        <label for="sire-farm-filter">Tenyészet:</label>
+                        <div class="farm-filter"><select id="sire-farm-filter"></select></div>
+                    </div>
+                    <div class="animal-grid"><table id="sire-available-grid"></table></div>
+                </div>
+                <div class="transfer-buttons">
+                    <button id="add-sire-btn" title="Kiválasztottak hozzáadása">&gt;&gt;</button>
+                    <button id="remove-sire-btn" title="Kiválasztottak eltávolítása">&lt;&lt;</button>
+                </div>
+                <div class="grid-panel">
+                    <div class="grid-header">Kiválasztott apák</div>
+                    <div class="animal-grid"><table id="sire-selected-grid"></table></div>
+                </div>
+            </div>
         </div>
     </div>
 
+    <!-- Export Form -->
     <form id="export-form" method="POST" action="{{ url_for('main.export_results') }}">
         <input type="hidden" name="session_id" value="{{ session_id }}">
         <input type="hidden" id="sire_ids" name="sire_ids">
         <input type="hidden" id="dam_ids" name="dam_ids">
-        <button type="submit" id="export-button" class="button">Szimuláció & Exportálás Excelbe</button>
+        <button type="submit" id="export-button" class="button">Szimuláció és exportálás excelbe</button>
     </form>
 </div>
 
 <script>
 document.addEventListener('DOMContentLoaded', () => {
-    const session_id = "{{ session_id }}";
-    const sireList = document.getElementById('sire-list');
-    const damList = document.getElementById('dam-list');
-    const sireSearch = document.getElementById('sire-search');
-    const damSearch = document.getElementById('dam-search');
-    const selectedSiresDiv = document.getElementById('selected-sires');
-    const selectedDamsDiv = document.getElementById('selected-dams');
-    const sireIdsInput = document.getElementById('sire_ids');
-    const damIdsInput = document.getElementById('dam_ids');
+    const SESSION_ID = "{{ session_id }}";
+    
+    let allSires = [], allDams = [], selectedSires = [], selectedDams = [];
 
-    let allSires = [];
-    let allDams = [];
-    let selectedSireIds = new Set();
-    let selectedDamIds = new Set();
+    async function initialize() {
+        const data = await fetchAnimals();
+        if (!data) return;
+        
+        allSires = data.sires;
+        allDams = data.dams;
+
+        setupSelector('dam', allDams, selectedDams);
+        setupSelector('sire', allSires, selectedSires);
+    }
 
     async function fetchAnimals() {
         try {
-            const response = await fetch(`/pedigree/animals/${session_id}`);
-            if (!response.ok) {
-                throw new Error(`Server error: ${response.statusText}`);
-            }
-            const data = await response.json();
-            allSires = data.sires;
-            allDams = data.dams;
-            renderLists();
+            const response = await fetch(`/pedigree/animals/${SESSION_ID}`);
+            if (!response.ok) throw new Error(`Szerverhiba: ${response.statusText}`);
+            return await response.json();
         } catch (error) {
-            console.error("Error fetching animals:", error);
-            alert("Hiba az állatok adatainak lekérése közben.");
+            console.error("Hiba az állatok lekérésekor:", error);
+            alert("Hiba történt az állatok adatainak lekérése közben. Kérjük, próbálja meg később.");
+            return null;
         }
     }
 
-    function renderLists(sireFilter = '', damFilter = '') {
-        renderAnimalList(sireList, allSires, selectedSireIds, sireFilter);
-        renderAnimalList(damList, allDams, selectedDamIds, damFilter);
-        updateSelectedDisplays();
-    }
+    function setupSelector(type, allAnimals, selectedAnimals) {
+        const farmFilter = document.getElementById(`${type}-farm-filter`);
+        const availableGrid = document.getElementById(`${type}-available-grid`);
+        const selectedGrid = document.getElementById(`${type}-selected-grid`);
+        const addBtn = document.getElementById(`add-${type}-btn`);
+        const removeBtn = document.getElementById(`remove-${type}-btn`);
 
-    function renderAnimalList(listElement, animals, selectedIds, filter) {
-        listElement.innerHTML = '';
-        const filteredAnimals = animals.filter(animal => animal.animal_id.toString().includes(filter));
-        
-        filteredAnimals.forEach(animal => {
-            const li = document.createElement('li');
-            li.textContent = animal.animal_id;
-            li.dataset.id = animal.animal_id;
-            if (selectedIds.has(animal.animal_id.toString())) {
-                li.classList.add('selected');
+        const farms = ['Minden', ...new Set(allAnimals.map(a => a.farm))];
+        farmFilter.innerHTML = farms.map(f => `<option value="${f}">${f}</option>`).join('');
+
+        const renderGrids = () => {
+            const selectedFarm = farmFilter.value;
+            const available = allAnimals.filter(animal => 
+                !selectedAnimals.some(sa => sa.animal_id === animal.animal_id) &&
+                (selectedFarm === 'Minden' || animal.farm === selectedFarm)
+            );
+            renderTable(availableGrid, available, type, 'available');
+            renderTable(selectedGrid, selectedAnimals, type, 'selected');
+        };
+
+        const transferAnimals = (direction) => {
+            const sourceGrid = direction === 'add' ? availableGrid : selectedGrid;
+            const checkedRows = Array.from(sourceGrid.querySelectorAll('.row-select:checked'));
+            const idsToTransfer = checkedRows.map(cb => parseInt(cb.closest('tr').dataset.id, 10));
+
+            if (direction === 'add') {
+                const animalsToAdd = allAnimals.filter(a => idsToTransfer.includes(a.animal_id));
+                selectedAnimals.push(...animalsToAdd);
+            } else {
+                const newSelected = selectedAnimals.filter(a => !idsToTransfer.includes(a.animal_id));
+                if (type === 'sire') { selectedSires = newSelected; } else { selectedDams = newSelected; }
+                selectedAnimals = newSelected;
             }
-            li.addEventListener('click', () => toggleSelection(selectedIds, animal.animal_id.toString(), li));
-            listElement.appendChild(li);
-        });
-    }
+            renderGrids();
+            updateExportForm();
+        };
 
-    function toggleSelection(selectedIds, id, listItem) {
-        if (selectedIds.has(id)) {
-            selectedIds.delete(id);
-            listItem.classList.remove('selected');
-        } else {
-            selectedIds.add(id);
-            listItem.classList.add('selected');
+        farmFilter.addEventListener('change', renderGrids);
+        addBtn.addEventListener('click', () => transferAnimals('add'));
+        removeBtn.addEventListener('click', () => transferAnimals('remove'));
+
+        renderGrids();
+    }
+    
+    function renderTable(tableEl, animals, type, gridType) {
+        tableEl.sortState = tableEl.sortState || {};
+        if (tableEl.sortState.column) {
+            const { column, direction } = tableEl.sortState;
+            animals.sort((a, b) => {
+                const valA = a[column], valB = b[column];
+                if (valA < valB) return direction === 'asc' ? -1 : 1;
+                if (valA > valB) return direction === 'asc' ? 1 : -1;
+                return 0;
+            });
         }
-        updateSelectedDisplays();
-    }
 
-    function updateSelectedDisplays() {
-        updateSelectedDisplay(selectedSiresDiv, selectedSireIds);
-        updateSelectedDisplay(selectedDamsDiv, selectedDamIds);
-        sireIdsInput.value = Array.from(selectedSireIds).join(',');
-        damIdsInput.value = Array.from(selectedDamIds).join(',');
-    }
+        const headers = [
+            { key: 'animal_id', label: 'Azonosító' },
+            { key: 'farm', label: 'Tenyészet' },
+            { key: 'ibc', label: 'IBC' }
+        ];
+        
+        tableEl.innerHTML = `<thead><tr><th><input type=\"checkbox\" class=\"select-all\"></th>${headers.map(h => `<th data-sort-key="${h.key}">${h.label} <span class=\"sort-indicator\"></span></th>`).join('')}</tr></thead><tbody>${animals.map(animal => `
+            <tr data-id="${animal.animal_id}">
+                <td><input type=\"checkbox\" class=\"row-select\"></td>
+                <td>${animal.animal_id}</td>
+                <td>${animal.farm}</td>
+                <td>${animal.ibc.toFixed(4)}</td>
+            </tr>`).join('')}</tbody>`;
 
-    function updateSelectedDisplay(div, selectedIds) {
-        div.innerHTML = '';
-        selectedIds.forEach(id => {
-            const span = document.createElement('span');
-            span.textContent = id;
-            div.appendChild(span);
+        // --- Event Listeners ---
+        const tbody = tableEl.querySelector('tbody');
+        tbody.lastSelectedRowIndex = -1;
+
+        // Row click for selection
+        tbody.addEventListener('click', (e) => {
+            const row = e.target.closest('tr');
+            if (!row) return;
+            const rowIndex = Array.from(tbody.children).indexOf(row);
+            const checkbox = row.querySelector('.row-select');
+
+            if (e.shiftKey && tbody.lastSelectedRowIndex > -1) {
+                const start = Math.min(rowIndex, tbody.lastSelectedRowIndex);
+                const end = Math.max(rowIndex, tbody.lastSelectedRowIndex);
+                Array.from(tbody.children).forEach((r, i) => {
+                    const cb = r.querySelector('.row-select');
+                    if (i >= start && i <= end) {
+                        cb.checked = true;
+                        r.classList.add('selected-row');
+                    } else if (!e.ctrlKey) {
+                        cb.checked = false;
+                        r.classList.remove('selected-row');
+                    }
+                });
+            } else if (e.ctrlKey) {
+                checkbox.checked = !checkbox.checked;
+                row.classList.toggle('selected-row', checkbox.checked);
+            } else {
+                const isSelected = checkbox.checked;
+                tbody.querySelectorAll('.row-select').forEach(cb => { cb.checked = false; });
+                tbody.querySelectorAll('tr').forEach(r => { r.classList.remove('selected-row'); });
+                checkbox.checked = !isSelected;
+                row.classList.toggle('selected-row', checkbox.checked);
+            }
+            tbody.lastSelectedRowIndex = rowIndex;
+        });
+
+        // Select all checkbox
+        tableEl.querySelector('.select-all').addEventListener('change', (e) => {
+            const isChecked = e.target.checked;
+            tbody.querySelectorAll('tr').forEach(row => {
+                row.querySelector('.row-select').checked = isChecked;
+                row.classList.toggle('selected-row', isChecked);
+            });
+        });
+
+        // Sorting
+        tableEl.querySelectorAll('th[data-sort-key]').forEach(th => {
+            const key = th.dataset.sortKey;
+            if (tableEl.sortState.column === key) {
+                th.classList.add(tableEl.sortState.direction === 'asc' ? 'sort-asc' : 'sort-desc');
+                th.querySelector('.sort-indicator').textContent = tableEl.sortState.direction === 'asc' ? '▲' : '▼';
+            }
+
+            th.addEventListener('click', () => {
+                const currentDir = tableEl.sortState.direction;
+                let newDir = 'asc';
+                if (tableEl.sortState.column === key && currentDir === 'asc') newDir = 'desc';
+                tableEl.sortState = { column: key, direction: newDir };
+                const renderFn = () => setupSelector(type, type === 'sire' ? allSires : allDams, type === 'sire' ? selectedSires : selectedDams);
+                renderFn();
+            });
         });
     }
 
-    sireSearch.addEventListener('input', () => renderLists(sireSearch.value, damSearch.value));
-    damSearch.addEventListener('input', () => renderLists(sireSearch.value, damSearch.value));
+    function updateExportForm() {
+        document.getElementById('sire_ids').value = selectedSires.map(a => a.animal_id).join(',');
+        document.getElementById('dam_ids').value = selectedDams.map(a => a.animal_id).join(',');
+    }
 
-    // Initial load
-    fetchAnimals();
+    initialize();
 });
 </script>
 {% endblock %}

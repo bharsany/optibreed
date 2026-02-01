@@ -47,7 +47,7 @@ def upload_and_process():
 def start_calculation():
     data = request.get_json()
     if not data:
-        return jsonify({'error': 'Nincs adat a számításhoz.'}), 400
+        return jsonify({"error": 'Nincs adat a számításhoz.'}), 400
     
     try:
         session_id = str(uuid.uuid4())
@@ -109,20 +109,31 @@ def get_animals(session_id):
     if not session_id or session_id not in current_app.sessions:
         return jsonify({"error": "Érvénytelen munkamenet"}), 404
     
-    df = current_app.sessions[session_id]['data']
+    df = current_app.sessions[session_id]['data'].copy()
+    calculator = current_app.sessions[session_id]['calculator']
     
-    # Ensure 'gender' column exists, otherwise make a default assumption
+    # Safely get IBC values for each animal
+    df['ibc'] = df['animal_id'].apply(lambda id: calculator.get_inbreeding_meuwissen(id))
+
+    # Standardize farm column
+    if 'farm_id' in df.columns and 'farm' not in df.columns:
+        df.rename(columns={'farm_id': 'farm'}, inplace=True)
+    elif 'farm_id' not in df.columns and 'farm' not in df.columns:
+        df['farm'] = 'Ismeretlen'
+
+    # Ensure 'gender' column exists
     if 'gender' not in df.columns:
-        # Simple assumption: animals that are dams are female, sires are male
         dam_ids = df['dam_id'].dropna().unique()
         sire_ids = df['sire_id'].dropna().unique()
-        df['gender'] = 'U' # Unknown default
+        df['gender'] = 'U'
         df.loc[df['animal_id'].isin(dam_ids), 'gender'] = 'F'
         df.loc[df['animal_id'].isin(sire_ids), 'gender'] = 'M'
-
+    
     df['gender'] = df['gender'].astype(str).str.upper()
-    sires = df[df['gender'] == 'M'][['animal_id']].to_dict(orient='records')
-    dams = df[df['gender'] == 'F'][['animal_id']].to_dict(orient='records')
+
+    columns_to_return = ['animal_id', 'farm', 'ibc']
+    sires = df[df['gender'] == 'M'][columns_to_return].to_dict(orient='records')
+    dams = df[df['gender'] == 'F'][columns_to_return].to_dict(orient='records')
     
     return jsonify({'sires': sires, 'dams': dams})
 
