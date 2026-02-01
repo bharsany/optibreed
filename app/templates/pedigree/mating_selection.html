@@ -28,10 +28,22 @@
     th.sort-desc .sort-indicator::after { content: ' ▼'; }
     tr.selected-row { background-color: var(--selected-row-bg); }
     tbody tr { cursor: pointer; }
-    /* Only disable pointer events on checkboxes in the table body, not the header */
     tbody input[type="checkbox"] { pointer-events: none; }
 
-    #export-button { margin-top: 2rem; }
+    .action-buttons-container {
+        margin-top: 2rem;
+        display: flex;
+        gap: 1rem;
+        align-items: center;
+    }
+    .button-secondary {
+        background-color: #6c757d;
+        border-color: #6c757d;
+    }
+    .button-secondary:hover {
+        background-color: #5a6268;
+        border-color: #545b62;
+    }
 </style>
 
 <div class="container">
@@ -84,13 +96,21 @@
         </div>
     </div>
 
-    <!-- Export Form -->
-    <form id="export-form" method="POST" action="{{ url_for('main.export_results') }}">
-        <input type="hidden" name="session_id" value="{{ session_id }}">
-        <input type="hidden" id="sire_ids" name="sire_ids">
-        <input type="hidden" id="dam_ids" name="dam_ids">
-        <button type="submit" id="export-button" class="button">Szimuláció és exportálás excelbe</button>
-    </form>
+    <!-- Action Buttons -->
+    <div class="action-buttons-container">
+        <form id="export-form" method="POST" action="{{ url_for('main.export_results') }}" style="margin: 0;">
+            <input type="hidden" name="session_id" value="{{ session_id }}">
+            <input type="hidden" id="export_sire_ids" name="sire_ids">
+            <input type="hidden" id="export_dam_ids" name="dam_ids">
+            <button type="submit" class="button">Szimuláció és exportálás excelbe</button>
+        </form>
+        <form id="results-form" method="POST" action="{{ url_for('main.simulation_results') }}" style="margin: 0;">
+            <input type="hidden" name="session_id" value="{{ session_id }}">
+            <input type="hidden" id="results_sire_ids" name="sire_ids">
+            <input type="hidden" id="results_dam_ids" name="dam_ids">
+            <button type="submit" class="button button-secondary">Eredmények Megtekintése</button>
+        </form>
+    </div>
 </div>
 
 <script>
@@ -151,7 +171,6 @@ document.addEventListener('DOMContentLoaded', () => {
                 const animalsToAdd = allAnimals.filter(a => idsToTransfer.has(a.animal_id));
                 selectedAnimals.push(...animalsToAdd);
             } else { // 'remove'
-                // Modify the array in-place to maintain the reference across scopes.
                 for (let i = selectedAnimals.length - 1; i >= 0; i--) {
                     if (idsToTransfer.has(selectedAnimals[i].animal_id)) {
                         selectedAnimals.splice(i, 1);
@@ -159,7 +178,7 @@ document.addEventListener('DOMContentLoaded', () => {
                 }
             }
             renderGrids();
-            updateExportForm();
+            updateActionForms();
         };
 
         farmFilter.addEventListener('change', renderGrids);
@@ -192,7 +211,6 @@ document.addEventListener('DOMContentLoaded', () => {
                     <td>${animal.ibc.toFixed(4)}</td>
                 </tr>`).join('')}</tbody>`;
 
-            // --- Event Listeners ---
             const tbody = tableEl.querySelector('tbody');
             if (!tbody) return;
             tbody.lastSelectedRowIndex = -1;
@@ -260,16 +278,22 @@ document.addEventListener('DOMContentLoaded', () => {
                         newDir = 'desc';
                     }
                     tableEl.sortState = { column: key, direction: newDir };
-                    renderGrids(); // Just re-render the grids with the new sort state
+                    renderGrids();
                 });
             });
         }
         renderGrids();
     }
 
-    function updateExportForm() {
-        document.getElementById('sire_ids').value = selectedSires.map(a => a.animal_id).join(',');
-        document.getElementById('dam_ids').value = selectedDams.map(a => a.animal_id).join(',');
+    function updateActionForms() {
+        const sireIds = selectedSires.map(a => a.animal_id).join(',');
+        const damIds = selectedDams.map(a => a.animal_id).join(',');
+
+        document.getElementById('export_sire_ids').value = sireIds;
+        document.getElementById('export_dam_ids').value = damIds;
+        
+        document.getElementById('results_sire_ids').value = sireIds;
+        document.getElementById('results_dam_ids').value = damIds;
     }
 
     initialize();

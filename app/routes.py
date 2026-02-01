@@ -192,3 +192,46 @@ def export_results():
     except Exception as e:
         current_app.logger.error(f"Error exporting results: {e}", exc_info=True)
         return "Hiba az exportálás során.", 500
+
+@main_blueprint.route('/pedigree/simulation_results', methods=['POST'])
+def simulation_results():
+    session_id = request.form.get('session_id')
+    if not session_id or session_id not in current_app.sessions:
+        return "Hiba: Érvénytelen vagy lejárt munkamenet.", 400
+
+    try:
+        df = current_app.sessions[session_id]['data'].copy()
+        calculator = current_app.sessions[session_id]['calculator']
+
+        if 'farm_id' in df.columns:
+            df.rename(columns={'farm_id': 'farm'}, inplace=True)
+        elif 'farm' not in df.columns:
+            df['farm'] = 'Ismeretlen'
+
+        sire_ids = [int(id) for id in request.form.get('sire_ids', '').split(',') if id]
+        dam_ids = [int(id) for id in request.form.get('dam_ids', '').split(',') if id]
+
+        sire_details = df[df['animal_id'].isin(sire_ids)].to_dict('records')
+        dam_details = df[df['animal_id'].isin(dam_ids)].to_dict('records')
+
+        results_data = []
+        for sire in sire_details:
+            sire_ibc = calculator.get_inbreeding_meuwissen(sire['animal_id'])
+            for dam in dam_details:
+                dam_ibc = calculator.get_inbreeding_meuwissen(dam['animal_id'])
+                offspring_ibc = calculator.calculate_coancestry(sire['animal_id'], dam['animal_id'])
+                results_data.append({
+                    'sire_id': sire['animal_id'],
+                    'sire_farm': sire['farm'],
+                    'sire_ibc': sire_ibc,
+                    'dam_id': dam['animal_id'],
+                    'dam_farm': dam['farm'],
+                    'dam_ibc': dam_ibc,
+                    'offspring_ibc': offspring_ibc
+                })
+        
+        return render_template('pedigree/simulation_result.html', results=results_data)
+
+    except Exception as e:
+        current_app.logger.error(f"Error in simulation results: {e}", exc_info=True)
+        return "Hiba a szimulációs eredmények generálása során.", 500

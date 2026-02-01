@@ -1,245 +1,206 @@
 {% extends 'base.html' %}
-{% block title %}Szimulációs Eredmények{% endblock %}
+{% block title %}Szimulációs Eredmények - OptiBreed{% endblock %}
 
 {% block content %}
 <style>
-    #results-table {
-        width: 100%;
-        border-collapse: collapse;
-        margin-top: 2rem;
+    :root {
+        --lowest-ibc-bg: #d4edda; /* Pastel light green for highlighting */
     }
-    #results-table th, #results-table td {
-        border: 1px solid #ddd;
-        padding: 8px;
-        text-align: left;
-    }
-    #results-table thead {
-        background-color: #f2f2f2;
-    }
-    .sortable-header {
-        cursor: pointer;
-        position: relative;
-    }
-    .sortable-header::after {
-        content: ' \2195'; /* Up-down arrow */
-        opacity: 0.5;
-    }
-    .sortable-header.sort-asc::after {
-        content: ' \25B2'; /* Up arrow */
-        opacity: 1;
-    }
-    .sortable-header.sort-desc::after {
-        content: ' \25BC'; /* Down arrow */
-        opacity: 1;
-    }
-    .lowest-ibc {
-        background-color: #d4edda; /* Pastel light green */
-    }
-    .modal {
-        display: none; 
-        position: fixed; 
-        z-index: 1000; 
-        left: 0;
-        top: 0;
-        width: 100%; 
-        height: 100%; 
-        overflow: auto; 
-        background-color: rgba(0,0,0,0.4); 
-    }
-    .modal-content {
-        background-color: #fefefe;
-        margin: 10% auto; 
-        padding: 20px;
-        border: 1px solid #888;
-        width: 80%;
-        max-width: 700px;
-        border-radius: var(--border-radius);
-    }
-    .close-button {
-        color: #aaa;
-        float: right;
-        font-size: 28px;
-        font-weight: bold;
-        cursor: pointer;
-    }
-    #modal-dam-list {
-        margin-top: 1rem;
-        max-height: 400px;
-        overflow-y: auto;
-    }
-    .total-ibc-cell .loader {
-        display: inline-block;
-        width: 20px;
-        height: 20px;
-        border: 2px solid #f3f3f3;
-        border-top: 2px solid #3498db;
-        border-radius: 50%;
-        animation: spin 1s linear infinite;
-        margin: auto;
-    }
-    .total-ibc-cell .value {
-        display: none;
-    }
-    #export-container {
-        margin-top: 2rem;
-        text-align: right;
-    }
+    #results-table { width: 100%; border-collapse: collapse; margin-top: 2rem; }
+    #results-table th, #results-table td { border: 1px solid #ddd; padding: 12px; text-align: left; }
+    #results-table thead { background-color: #f2f2f2; position: sticky; top: 0; }
+    .sortable-header { cursor: pointer; position: relative; user-select: none; }
+    .sortable-header .sort-indicator { display: inline-block; width: 1em; text-align: left; }
+    .sortable-header.sort-asc .sort-indicator::after { content: ' ▲'; }
+    .sortable-header.sort-desc .sort-indicator::after { content: ' ▼'; }
+    .lowest-ibc { background-color: var(--lowest-ibc-bg); }
+    
+    /* Modal Styles */
+    .modal { display: none; position: fixed; z-index: 1000; left: 0; top: 0; width: 100%; height: 100%; overflow: auto; background-color: rgba(0,0,0,0.5); }
+    .modal-content { background-color: #fefefe; margin: 10% auto; padding: 20px; border: 1px solid #888; width: 80%; max-width: 800px; border-radius: var(--border-radius); }
+    .close-button { color: #aaa; float: right; font-size: 28px; font-weight: bold; cursor: pointer; }
+    
+    #modal-dam-table { margin-top: 1rem; max-height: 400px; overflow-y: auto; width: 100%; border-collapse: collapse; }
+    #modal-dam-table th, #modal-dam-table td { border-bottom: 1px solid #ddd; padding: 8px; }
+    #modal-dam-table thead { background-color: #f9f9f9; }
 
-    @keyframes spin {
-        0% { transform: rotate(0deg); }
-        100% { transform: rotate(360deg); }
-    }
+    #export-container { margin-top: 2rem; text-align: right; }
 </style>
 
-<h1>Szimulációs Eredmények</h1>
-<p>A rendszer automatikusan kiszámítja a kiválasztott apák és anyák lehetséges párosításainak eredményeit. Az eredmények az alábbi táblázatban jelennek meg, amint rendelkezésre állnak.</p>
+<div class="container">
+    <h1>Szimulációs Eredmények</h1>
+    <p>A táblázat a kiválasztott apák és anyák lehetséges párosításainak összesített eredményeit mutatja. Kattintson a "Részletek" gombra egy apa összes párosításának megtekintéséhez.</p>
 
-<table id="results-table">
-    <thead>
-        <tr>
-            <th class="sortable-header" data-sort-key="animal_id" data-sort-type="number">Apa Azonosító</th>
-            <th class="sortable-header" data-sort-key="farm" data-sort-type="string">Tenyészet</th>
-            <th class="sortable-header" data-sort-key="ibc" data-sort-type="number">Apa BTE</th>
-            <th class="sortable-header" data-sort-key="total_ibc" data-sort-type="number">Várható BTE Összesen (Összes anyával)</th>
-            <th>Művelet</th>
-        </tr>
-    </thead>
-    <tbody>
-        {% for sire_result in initial_results.sire_details %}
-        <tr data-sire-row-id="{{ sire_result.animal_id }}">
-            <td>{{ sire_result.animal_id }}</td>
-            <td>{{ sire_result.farm }}</td>
-            <td>{{ "%.4f"|format(sire_result.ibc) }}</td>
-            <td class="total-ibc-cell">
-                <div class="loader"></div>
-                <span class="value">-</span>
-            </td>
-            <td>
-                <button class="button details-btn" data-sire-id="{{ sire_result.animal_id }}" disabled>Részletek...</button>
-            </td>
-        </tr>
-        {% endfor %}
-    </tbody>
-</table>
+    <table id="results-table">
+        <thead>
+            <tr>
+                <th class="sortable-header" data-sort-key="sire_id">Apa Azonosító</th>
+                <th class="sortable-header" data-sort-key="sire_farm">Apa Tenyészet</th>
+                <th class="sortable-header" data-sort-key="sire_ibc">Apa BTE</th>
+                <th class="sortable-header" data-sort-key="avg_offspring_ibc">Várható Utód BTE (Átlag)</th>
+                <th>Művelet</th>
+            </tr>
+        </thead>
+        <tbody>
+            <!-- Rows will be dynamically inserted here -->
+        </tbody>
+    </table>
 
-<div id="export-container">
-    <button id="export-btn" class="button" disabled>Exportálás Excelbe</button>
-</div>
-
-<!-- The Modal -->
-<div id="details-modal" class="modal">
-    <div class="modal-content">
-        <span class="close-button">&times;</span>
-        <h2>Párosítás Részletei</h2>
-        <div id="modal-sire-details"></div>
-        <hr>
-        <h3>Lehetséges párosítások az alábbi anyákkal:</h3>
-        <div id="modal-dam-list"></div>
+    <!-- The Modal -->
+    <div id="details-modal" class="modal">
+        <div class="modal-content">
+            <span class="close-button">&times;</span>
+            <h2>Párosítás Részletei</h2>
+            <div id="modal-sire-details"></div>
+            <hr>
+            <h3>Lehetséges párosítások az alábbi anyákkal:</h3>
+            <div id="modal-dam-list-container">
+                <table id="modal-dam-table">
+                    <thead>
+                        <tr>
+                            <th>Anya Azonosító</th>
+                            <th>Anya Tenyészet</th>
+                            <th>Anya BTE</th>
+                            <th>Várható Utód BTE</th>
+                        </tr>
+                    </thead>
+                    <tbody></tbody>
+                </table>
+            </div>
+        </div>
     </div>
 </div>
 
 <script>
-    const initialData = {{ initial_results|tojson }};
-    const sessionId = "{{ session_id }}";
-    const pairingsCache = {}; 
+document.addEventListener('DOMContentLoaded', () => {
+    const pairings = {{ results|tojson }};
+    const tableBody = document.querySelector('#results-table tbody');
+    const modal = document.getElementById('details-modal');
+    const closeButton = document.querySelector('.close-button');
+    let sireSummaryData = [];
 
-    async function calculateAndDisplaySire(sireDetails) {
-        // ... (existing calculation logic) ...
+    function processData() {
+        const sires = {};
+        if (!pairings || pairings.length === 0) {
+            tableBody.innerHTML = '<tr><td colspan="5" style="text-align: center;">Nincsenek eredmények a megjelenítéshez.</td></tr>';
+            return;
+        }
+
+        pairings.forEach(p => {
+            if (!sires[p.sire_id]) {
+                sires[p.sire_id] = {
+                    sire_id: p.sire_id,
+                    sire_farm: p.sire_farm,
+                    sire_ibc: p.sire_ibc,
+                    pairings: [],
+                    total_offspring_ibc: 0
+                };
+            }
+            sires[p.sire_id].pairings.push(p);
+            sires[p.sire_id].total_offspring_ibc += p.offspring_ibc;
+        });
+
+        sireSummaryData = Object.values(sires).map(s => ({
+            ...s,
+            avg_offspring_ibc: s.total_offspring_ibc / s.pairings.length
+        }));
+
+        renderTable(sireSummaryData);
     }
 
-    function findAndHighlightLowestIbc() {
-        let lowestIbc = Infinity;
+    function renderTable(data) {
+        tableBody.innerHTML = '';
+        data.forEach(sire => {
+            const row = document.createElement('tr');
+            row.innerHTML = `
+                <td>${sire.sire_id}</td>
+                <td>${sire.sire_farm}</td>
+                <td>${sire.sire_ibc.toFixed(4)}</td>
+                <td>${sire.avg_offspring_ibc.toFixed(4)}</td>
+                <td><button class="button details-btn" data-sire-id="${sire.sire_id}">Részletek...</button></td>
+            `;
+            tableBody.appendChild(row);
+        });
+        highlightLowestAverage();
+    }
+
+    function highlightLowestAverage() {
+        let lowestAvg = Infinity;
         let lowestRow = null;
-        document.querySelectorAll('#results-table tbody tr').forEach(row => {
-            const valueCell = row.querySelector('.total-ibc-cell .value');
-            const value = parseFloat(valueCell.textContent);
-            if (!isNaN(value) && value < lowestIbc) {
-                lowestIbc = value;
-                if (lowestRow) lowestRow.classList.remove('lowest-ibc');
+
+        tableBody.querySelectorAll('tr').forEach((row, index) => {
+            const avgIbc = sireSummaryData[index]?.avg_offspring_ibc;
+            if (avgIbc < lowestAvg) {
+                lowestAvg = avgIbc;
+                if(lowestRow) lowestRow.classList.remove('lowest-ibc');
                 lowestRow = row;
-                lowestRow.classList.add('lowest-ibc');
+                row.classList.add('lowest-ibc');
+            } else {
+                row.classList.remove('lowest-ibc');
             }
         });
     }
 
-    function makeTableSortable() {
-        const table = document.getElementById('results-table');
-        const headers = table.querySelectorAll('.sortable-header');
-        const tbody = table.querySelector('tbody');
-        
-        headers.forEach(header => {
-            header.addEventListener('click', () => {
-                const rows = Array.from(tbody.querySelectorAll('tr'));
-                const sortKey = header.dataset.sortKey;
-                const sortType = header.dataset.sortType;
-                const direction = header.classList.contains('sort-asc') ? 'desc' : 'asc';
+    function sortTable(key) {
+        const header = document.querySelector(`.sortable-header[data-sort-key='${key}']`);
+        const direction = header.classList.contains('sort-asc') ? 'desc' : 'asc';
 
-                const sortedRows = rows.sort((a, b) => {
-                    let aVal, bVal;
-                    if (sortKey === 'total_ibc') {
-                        aVal = parseFloat(a.querySelector('.total-ibc-cell .value').textContent) || -1;
-                        bVal = parseFloat(b.querySelector('.total-ibc-cell .value').textContent) || -1;
-                    } else {
-                        const cellIndex = Array.from(header.parentNode.children).indexOf(header);
-                        aVal = a.children[cellIndex].textContent;
-                        bVal = b.children[cellIndex].textContent;
-                        if (sortType === 'number') {
-                            aVal = parseFloat(aVal);
-                            bVal = parseFloat(bVal);
-                        }
-                    }
-                    return (aVal > bVal ? 1 : -1) * (direction === 'asc' ? 1 : -1);
-                });
-
-                tbody.innerHTML = '';
-                sortedRows.forEach(row => tbody.appendChild(row));
-
-                headers.forEach(h => h.classList.remove('sort-asc', 'sort-desc'));
-                header.classList.add(direction === 'asc' ? 'sort-asc' : 'sort-desc');
-            });
+        sireSummaryData.sort((a, b) => {
+            if (a[key] < b[key]) return direction === 'asc' ? -1 : 1;
+            if (a[key] > b[key]) return direction === 'asc' ? 1 : -1;
+            return 0;
         });
+
+        document.querySelectorAll('.sortable-header').forEach(h => h.classList.remove('sort-asc', 'sort-desc'));
+        header.classList.add(direction === 'asc' ? 'sort-asc' : 'sort-desc');
+
+        renderTable(sireSummaryData);
     }
 
-    document.addEventListener('DOMContentLoaded', async function() {
-        const modal = document.getElementById('details-modal');
-        const closeButton = document.querySelector('.close-button');
-        const exportButton = document.getElementById('export-btn');
+    function showModal(sireId) {
+        const sireData = sireSummaryData.find(s => s.sire_id === sireId);
+        if (!sireData) return;
 
-        const calculationPromises = initialData.sire_details.map(calculateAndDisplaySire);
-        await Promise.all(calculationPromises);
+        document.getElementById('modal-sire-details').innerHTML = `
+            <strong>Apa Azonosító:</strong> ${sireData.sire_id}<br>
+            <strong>Tenyészet:</strong> ${sireData.sire_farm}<br>
+            <strong>BTE:</strong> ${sireData.sire_ibc.toFixed(4)}
+        `;
 
-        findAndHighlightLowestIbc();
-        makeTableSortable();
-        exportButton.disabled = false;
+        const modalTbody = document.querySelector('#modal-dam-table tbody');
+        modalTbody.innerHTML = sireData.pairings.map(p => `
+            <tr>
+                <td>${p.dam_id}</td>
+                <td>${p.dam_farm}</td>
+                <td>${p.dam_ibc.toFixed(4)}</td>
+                <td>${p.offspring_ibc.toFixed(4)}</td>
+            </tr>
+        `).join('');
 
-        exportButton.addEventListener('click', () => {
-            const sire_ids = initialData.sire_details.map(s => s.animal_id);
-            const dam_ids = initialData.dam_ids;
-            const form = document.createElement('form');
-            form.method = 'POST';
-            form.action = "{{ url_for('pedigree.export_results') }}";
-            
-            const data = { session_id: sessionId, sire_ids, dam_ids };
-            for (const key in data) {
-                const hiddenField = document.createElement('input');
-                hiddenField.type = 'hidden';
-                hiddenField.name = key;
-                hiddenField.value = Array.isArray(data[key]) ? data[key].join(',') : data[key];
-                form.appendChild(hiddenField);
-            }
-            document.body.appendChild(form);
-            form.submit();
-            document.body.removeChild(form);
-        });
+        modal.style.display = 'block';
+    }
 
-        // ... (rest of the modal and button logic) ...
+    // Event Listeners
+    document.querySelectorAll('.sortable-header').forEach(header => {
+        header.addEventListener('click', () => sortTable(header.dataset.sortKey));
     });
 
-    // The original calculateAndDisplaySire and modal logic needs to be integrated here.
-    // Due to snippet constraints, this is a conceptual representation.
-    // The full script would merge the existing async calculation with this new structure.
+    tableBody.addEventListener('click', e => {
+        if (e.target.classList.contains('details-btn')) {
+            const sireId = parseInt(e.target.dataset.sireId, 10);
+            showModal(sireId);
+        }
+    });
 
+    closeButton.addEventListener('click', () => modal.style.display = 'none');
+    window.addEventListener('click', e => {
+        if (e.target === modal) {
+            modal.style.display = 'none';
+        }
+    });
+
+    // Initial Load
+    processData();
+});
 </script>
-
-{# NOTE: The script is a condensed representation. The final implementation would require merging the existing async calculation and modal display logic into the new structure provided above. #}
 {% endblock %}
