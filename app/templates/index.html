@@ -171,7 +171,7 @@
         const paginatedData = data.slice(start, end);
 
         paginatedData.forEach(row => {
-            let rowHtml = '<tr>';
+            let rowHtml = `<tr data-animal-id="${row.animal_id}">`;
             headers.forEach(header => {
                 let cellValue = row[header] === null || row[header] === undefined ? '' : row[header];
                 if (header === 'gender') {
@@ -179,9 +179,11 @@
                 } else if (header === 'ibc_traditional' || header === 'ibc_meuwissen') {
                     if (typeof cellValue === 'number') {
                         cellValue = cellValue.toFixed(4);
+                    } else {
+                        cellValue = '...';
                     }
                 }
-                rowHtml += `<td>${cellValue}</td>`;
+                rowHtml += `<td class="cell-${header}">${cellValue}</td>`;
             });
             rowHtml += '</tr>';
             tableBody.innerHTML += rowHtml;
@@ -214,27 +216,33 @@
             const progressBar = document.getElementById('progress-bar');
             const progressStatus = document.getElementById('progress-status');
             progressContainer.style.display = 'block';
-            progressBar.style.width = '10%';
-            progressBar.textContent = '10%';
+            progressBar.style.width = '0%';
+            progressBar.textContent = '0%';
             progressStatus.textContent = 'Kapcsolódás a számítási folyamhoz...';
-            
+
             const evtSource = new EventSource(`/calculate_ibcs?session_id=${currentSessionId}`);
+            
             evtSource.onmessage = function(event) {
                 const eventData = JSON.parse(event.data);
-                if (eventData.progress) {
-                    progressBar.style.width = eventData.progress + '%';
-                    progressBar.textContent = eventData.progress + '%';
-                    progressStatus.textContent = eventData.status;
+                
+                const animalIndex = data.findIndex(animal => animal.animal_id == eventData.animal_id);
+                if (animalIndex !== -1) {
+                    data[animalIndex].ibc_meuwissen = eventData.ibc_meuwissen;
+                    data[animalIndex].ibc_traditional = eventData.ibc_traditional;
                 }
+
+                progressBar.style.width = eventData.progress + '%';
+                progressBar.textContent = eventData.progress + '%';
+                progressStatus.textContent = `Feldolgozva: ${eventData.animal_id}, Folyamat: ${eventData.progress} %`;
+
+                renderGrid();
             };
 
-            evtSource.addEventListener('result', function(event) {
-                data = JSON.parse(event.data);
-                currentPage = 1;
-                renderGrid();
-                progressBar.style.width = '100%';
+            evtSource.addEventListener('complete', function(event) {
                 progressStatus.textContent = 'Számítás befejezve!';
-                setTimeout(() => { progressContainer.style.display = 'none'; }, 2000);
+                progressBar.style.width = '100%';
+                progressBar.textContent = '100%';
+                setTimeout(() => { progressContainer.style.display = 'none'; }, 3000);
                 evtSource.close();
                 finalizeButton();
             });

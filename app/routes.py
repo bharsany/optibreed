@@ -67,31 +67,35 @@ def calculate_ibcs_route():
 
     app = current_app._get_current_object()
 
-    def generate_progress():
+    def generate_results_stream():
         with app.app_context():
             try:
-                df = current_app.sessions[session_id]['data']
                 calculator = current_app.sessions[session_id]['calculator']
+                animal_ids = calculator.df['animal_id'].tolist()
+                total_animals = len(animal_ids)
 
-                yield f"data: {json.dumps({'progress': 50, 'status': 'Beltenyésztettségi együtthatók számítása...'})}\n\n"
-                df_results = df.copy()
+                for i, animal_id in enumerate(animal_ids):
+                    ibc_meuwissen = calculator.get_inbreeding_meuwissen(animal_id)
+                    ibc_traditional = calculator.get_inbreeding_traditional(animal_id)
+                    
+                    progress = int(((i + 1) / total_animals) * 100)
+                    
+                    data = {
+                        'animal_id': animal_id,
+                        'ibc_meuwissen': ibc_meuwissen,
+                        'ibc_traditional': ibc_traditional,
+                        'progress': progress
+                    }
+                    yield f"data: {json.dumps(data)}\n\n"
                 
-                meuwissen_results = df_results['animal_id'].map(calculator.F_meuwissen_cache)
-                df_results['ibc_meuwissen'] = meuwissen_results
-                df_results['ibc_traditional'] = meuwissen_results
-
-                yield f"data: {json.dumps({'progress': 75, 'status': 'Eredmények egyesítése...'})}\n\n"
-                df_results = df_results.fillna(0)
-                
-                final_data_json = df_results.to_json(orient='records')
-                yield f"event: result\ndata: {final_data_json}\n\n"
+                yield f"event: complete\ndata: {json.dumps({'message': 'A számítás befejeződött.'})}\n\n"
 
             except Exception as e:
                 current_app.logger.error(f"Calculation error in stream: {e}", exc_info=True)
                 error_message = f'Hiba történt a számítás során: {str(e)}'
                 yield f"event: error\ndata: {json.dumps({'error': error_message})}\n\n"
 
-    return Response(generate_progress(), mimetype='text/event-stream')
+    return Response(generate_results_stream(), mimetype='text/event-stream')
 
 @main_blueprint.route('/pedigree/mating_selection')
 def mating_selection():
