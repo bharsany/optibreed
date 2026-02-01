@@ -140,42 +140,31 @@ def get_animals(session_id):
 
 @main_blueprint.route('/pedigree/export_results', methods=['POST'])
 def export_results():
-    session_id = request.form.get('session_id')
-    if not session_id or session_id not in current_app.sessions:
-        return "Hiba: Érvénytelen vagy lejárt munkamenet.", 400
+    data = request.get_json()
+    if not data or 'pairings' not in data:
+        return "Hiba: Hiányzó adatok az exportáláshoz.", 400
 
     try:
-        df = current_app.sessions[session_id]['data'].copy()
-        calculator = current_app.sessions[session_id]['calculator']
-
-        if 'farm_id' in df.columns:
-            df.rename(columns={'farm_id': 'farm'}, inplace=True)
-        elif 'farm' not in df.columns:
-            df['farm'] = 'Ismeretlen'
-
-        sire_ids = [int(id) for id in request.form.get('sire_ids', '').split(',') if id]
-        dam_ids = [int(id) for id in request.form.get('dam_ids', '').split(',') if id]
-
-        sire_details = df[df['animal_id'].isin(sire_ids)].to_dict('records')
-        dam_details = df[df['animal_id'].isin(dam_ids)].to_dict('records')
-
-        export_data = []
-        for sire in sire_details:
-            sire_ibc = calculator.get_inbreeding_meuwissen(sire['animal_id'])
-            for dam in dam_details:
-                dam_ibc = calculator.get_inbreeding_meuwissen(dam['animal_id'])
-                offspring_ibc = calculator.calculate_coancestry(sire['animal_id'], dam['animal_id'])
-                export_data.append({
-                    'Apa Azonosító': sire['animal_id'],
-                    'Apa Tenyészet': sire['farm'],
-                    'Apa BTE': sire_ibc,
-                    'Anya Azonosító': dam['animal_id'],
-                    'Anya Tenyészet': dam['farm'],
-                    'Anya BTE': dam_ibc,
-                    'Várható Utód BTE': offspring_ibc
-                })
+        pairings_data = data['pairings']
         
-        output_df = pd.DataFrame(export_data)
+        output_df = pd.DataFrame(pairings_data)
+
+        output_df.rename(columns={
+            'sire_id': 'Apa Azonosító',
+            'sire_farm': 'Apa Tenyészet',
+            'sire_ibc': 'Apa BTE',
+            'dam_id': 'Anya Azonosító',
+            'dam_farm': 'Anya Tenyészet',
+            'dam_ibc': 'Anya BTE',
+            'offspring_ibc': 'Várható Utód BTE'
+        }, inplace=True)
+        
+        final_columns = [
+            'Apa Azonosító', 'Apa Tenyészet', 'Apa BTE',
+            'Anya Azonosító', 'Anya Tenyészet', 'Anya BTE',
+            'Várható Utód BTE'
+        ]
+        output_df = output_df[final_columns]
         
         output = BytesIO()
         with pd.ExcelWriter(output, engine='openpyxl') as writer:

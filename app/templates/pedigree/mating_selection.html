@@ -36,14 +36,6 @@
         gap: 1rem;
         align-items: center;
     }
-    .button-secondary {
-        background-color: #6c757d;
-        border-color: #6c757d;
-    }
-    .button-secondary:hover {
-        background-color: #5a6268;
-        border-color: #545b62;
-    }
 </style>
 
 <div class="container">
@@ -98,17 +90,11 @@
 
     <!-- Action Buttons -->
     <div class="action-buttons-container">
-        <form id="export-form" method="POST" action="{{ url_for('main.export_results') }}" style="margin: 0;">
-            <input type="hidden" name="session_id" value="{{ session_id }}">
-            <input type="hidden" id="export_sire_ids" name="sire_ids">
-            <input type="hidden" id="export_dam_ids" name="dam_ids">
-            <button type="submit" class="button">Szimuláció és exportálás excelbe</button>
-        </form>
         <form id="results-form" method="POST" action="{{ url_for('main.simulation_results') }}" style="margin: 0;">
             <input type="hidden" name="session_id" value="{{ session_id }}">
             <input type="hidden" id="results_sire_ids" name="sire_ids">
             <input type="hidden" id="results_dam_ids" name="dam_ids">
-            <button type="submit" class="button button-secondary">Eredmények Megtekintése</button>
+            <button type="submit" class="button">Eredmények Megtekintése</button>
         </form>
     </div>
 </div>
@@ -288,9 +274,6 @@ document.addEventListener('DOMContentLoaded', () => {
     function updateActionForms() {
         const sireIds = selectedSires.map(a => a.animal_id).join(',');
         const damIds = selectedDams.map(a => a.animal_id).join(',');
-
-        document.getElementById('export_sire_ids').value = sireIds;
-        document.getElementById('export_dam_ids').value = damIds;
         
         document.getElementById('results_sire_ids').value = sireIds;
         document.getElementById('results_dam_ids').value = damIds;

@@ -1,0 +1,258 @@
+{% extends 'base.html' %}
+{% block title %}Szimulációs Eredmények - OptiBreed{% endblock %}
+
+{% block content %}
+<style>
+    :root {
+        --lowest-ibc-bg: #d4edda;
+    }
+    #results-table { width: 100%; border-collapse: collapse; margin-top: 2rem; }
+    #results-table th, #results-table td { border: 1px solid #ddd; padding: 12px; text-align: left; }
+    #results-table thead { background-color: #f2f2f2; position: sticky; top: 0; }
+    .sortable-header { cursor: pointer; position: relative; user-select: none; }
+    .sortable-header .sort-indicator { display: inline-block; width: 1em; text-align: left; }
+    .sortable-header.sort-asc .sort-indicator::after { content: ' ▲'; }
+    .sortable-header.sort-desc .sort-indicator::after { content: ' ▼'; }
+    .lowest-ibc { background-color: var(--lowest-ibc-bg); }
+
+    /* Modal Styles */
+    .modal { display: none; position: fixed; z-index: 1000; left: 0; top: 0; width: 100%; height: 100%; overflow: auto; background-color: rgba(0,0,0,0.5); }
+    .modal-content { background-color: #fefefe; margin: 8% auto; padding: 20px; border: 1px solid #888; width: 80%; max-width: 800px; border-radius: var(--border-radius); }
+    .close-button { color: #aaa; float: right; font-size: 28px; font-weight: bold; cursor: pointer; }
+    #modal-dam-list-container { max-height: 350px; overflow-y: auto; border: 1px solid #eee; margin-top: 1rem; }
+    #modal-dam-table { width: 100%; border-collapse: collapse; }
+    #modal-dam-table th, #modal-dam-table td { border-bottom: 1px solid #ddd; padding: 8px; }
+    #modal-dam-table thead { background-color: #f9f9f9; position: sticky; top: 0; }
+    #modal-pagination { margin-top: 1rem; text-align: center; user-select: none; }
+    #modal-pagination button { margin: 0 0.5rem; }
+    #modal-page-info { display: inline-block; width: 100px; }
+    #modal-summary-stats { margin: 1rem 0; padding: 1rem; background-color: #f9f9f9; border-radius: var(--border-radius); }
+    .action-buttons-container { margin-top: 2rem; display: flex; justify-content: flex-end; }
+</style>
+
+<div class="container">
+    <h1>Szimulációs Eredmények</h1>
+    <p>A táblázat a kiválasztott apák és anyák lehetséges párosításainak összesített eredményeit mutatja. Kattintson a "Részletek" gombra egy apa összes párosításának megtekintéséhez.</p>
+
+    <div class="action-buttons-container">
+        <button id="export-btn" class="button">Exportálás Excelbe</button>
+    </div>
+
+    <table id="results-table">
+        <thead>
+            <tr>
+                <th class="sortable-header" data-sort-key="sire_id">Apa Azonosító<span class="sort-indicator"></span></th>
+                <th class="sortable-header" data-sort-key="sire_farm">Apa Tenyészet<span class="sort-indicator"></span></th>
+                <th class="sortable-header" data-sort-key="sire_ibc">Apa BTE<span class="sort-indicator"></span></th>
+                <th class="sortable-header" data-sort-key="avg_offspring_ibc">Várható Utód BTE (Átlag)<span class="sort-indicator"></span></th>
+                <th class="sortable-header" data-sort-key="total_offspring_ibc">Várható Utód BTE (Összesen)<span class="sort-indicator"></span></th>
+                <th>Művelet</th>
+            </tr>
+        </thead>
+        <tbody></tbody>
+    </table>
+
+    <!-- The Modal -->
+    <div id="details-modal" class="modal">
+        <div class="modal-content">
+            <span class="close-button">&times;</span>
+            <h2>Párosítás Részletei</h2>
+            <div id="modal-sire-details"></div>
+            <div id="modal-summary-stats"></div>
+            <hr>
+            <h3>Lehetséges párosítások az alábbi anyákkal:</h3>
+            <div id="modal-dam-list-container">
+                <table id="modal-dam-table">
+                    <thead>
+                        <tr>
+                            <th>Anya Azonosító</th>
+                            <th>Anya Tenyészet</th>
+                            <th>Anya BTE</th>
+                            <th>Várható Utód BTE</th>
+                        </tr>
+                    </thead>
+                    <tbody></tbody>
+                </table>
+            </div>
+            <div id="modal-pagination"></div>
+        </div>
+    </div>
+</div>
+
+<script>
+document.addEventListener('DOMContentLoaded', () => {
+    const pairings = {{ results|tojson|safe }};
+    const tableBody = document.querySelector('#results-table tbody');
+    const modal = document.getElementById('details-modal');
+    const closeButton = document.querySelector('.close-button');
+    let sireSummaryData = [];
+
+    let modalCurrentPairings = [];
+    let modalCurrentPage = 1;
+    const MODAL_ROWS_PER_PAGE = 10;
+
+    function processData() {
+        const sires = {};
+        if (!pairings || pairings.length === 0) {
+            tableBody.innerHTML = '<tr><td colspan="6" style="text-align: center;">Nincsenek eredmények a megjelenítéshez.</td></tr>';
+            document.getElementById('export-btn').style.display = 'none';
+            return;
+        }
+        pairings.forEach(p => {
+            if (!sires[p.sire_id]) {
+                sires[p.sire_id] = {
+                    sire_id: p.sire_id, sire_farm: p.sire_farm, sire_ibc: p.sire_ibc,
+                    pairings: [], total_offspring_ibc: 0
+                };
+            }
+            sires[p.sire_id].pairings.push(p);
+            sires[p.sire_id].total_offspring_ibc += p.offspring_ibc;
+        });
+        sireSummaryData = Object.values(sires).map(s => ({
+            ...s,
+            avg_offspring_ibc: s.pairings.length > 0 ? s.total_offspring_ibc / s.pairings.length : 0
+        }));
+        renderTable(sireSummaryData);
+    }
+
+    function renderTable(data) {
+        tableBody.innerHTML = '';
+        data.forEach(sire => {
+            const row = document.createElement('tr');
+            row.dataset.sireId = sire.sire_id;
+            row.innerHTML = `
+                <td>${sire.sire_id}</td>
+                <td>${sire.sire_farm}</td>
+                <td>${sire.sire_ibc.toFixed(4)}</td>
+                <td>${sire.avg_offspring_ibc.toFixed(4)}</td>
+                <td>${sire.total_offspring_ibc.toFixed(4)}</td>
+                <td><button class="button details-btn" data-sire-id="${sire.sire_id}">Részletek...</button></td>
+            `;
+            tableBody.appendChild(row);
+        });
+        highlightLowestAverage();
+    }
+
+    function highlightLowestAverage() {
+        if (sireSummaryData.length === 0) return;
+        let lowestAvg = Infinity;
+        sireSummaryData.forEach(s => {
+            if (s.avg_offspring_ibc < lowestAvg) lowestAvg = s.avg_offspring_ibc;
+        });
+        tableBody.querySelectorAll('tr').forEach(row => {
+            const sireId = parseInt(row.dataset.sireId, 10);
+            const sire = sireSummaryData.find(s => s.sire_id === sireId);
+            if (sire && sire.avg_offspring_ibc === lowestAvg) {
+                row.classList.add('lowest-ibc');
+            } else {
+                row.classList.remove('lowest-ibc');
+            }
+        });
+    }
+
+    function sortTable(key, currentHeader) {
+        const direction = currentHeader.classList.contains('sort-asc') ? 'desc' : 'asc';
+        sireSummaryData.sort((a, b) => {
+            const valA = a[key];
+            const valB = b[key];
+            if (valA < valB) return direction === 'asc' ? -1 : 1;
+            if (valA > valB) return direction === 'asc' ? 1 : -1;
+            return 0;
+        });
+        document.querySelectorAll('.sortable-header').forEach(h => h.classList.remove('sort-asc', 'sort-desc'));
+        currentHeader.classList.add(direction === 'asc' ? 'sort-asc' : 'sort-desc');
+        renderTable(sireSummaryData);
+    }
+
+    function renderModalDamList() {
+        const start = (modalCurrentPage - 1) * MODAL_ROWS_PER_PAGE;
+        const end = start + MODAL_ROWS_PER_PAGE;
+        const paginatedItems = modalCurrentPairings.slice(start, end);
+        const modalTbody = document.querySelector('#modal-dam-table tbody');
+        modalTbody.innerHTML = paginatedItems.map(p => `
+            <tr>
+                <td>${p.dam_id}</td><td>${p.dam_farm}</td>
+                <td>${p.dam_ibc.toFixed(4)}</td><td>${p.offspring_ibc.toFixed(4)}</td>
+            </tr>
+        `).join('');
+        
+        const paginationContainer = document.getElementById('modal-pagination');
+        const totalPages = Math.ceil(modalCurrentPairings.length / MODAL_ROWS_PER_PAGE);
+        if (totalPages <= 1) {
+            paginationContainer.innerHTML = '';
+            return;
+        }
+        paginationContainer.innerHTML = `
+            <button id="modal-prev-btn" class="button" ${modalCurrentPage === 1 ? 'disabled' : ''}>Előző</button>
+            <span id="modal-page-info">Oldal ${modalCurrentPage} / ${totalPages}</span>
+            <button id="modal-next-btn" class="button" ${modalCurrentPage === totalPages ? 'disabled' : ''}>Következő</button>
+        `;
+    }
+
+    function changeModalPage(direction) {
+        const totalPages = Math.ceil(modalCurrentPairings.length / MODAL_ROWS_PER_PAGE);
+        modalCurrentPage += direction;
+        if (modalCurrentPage < 1) modalCurrentPage = 1;
+        if (modalCurrentPage > totalPages) modalCurrentPage = totalPages;
+        renderModalDamList();
+    }
+
+    function showModal(sireId) {
+        const sireData = sireSummaryData.find(s => s.sire_id === sireId);
+        if (!sireData) return;
+
+        document.getElementById('modal-sire-details').innerHTML = `<strong>Apa Azonosító:</strong> ${sireData.sire_id} | <strong>Tenyészet:</strong> ${sireData.sire_farm} | <strong>Apa BTE:</strong> ${sireData.sire_ibc.toFixed(4)}`;
+        document.getElementById('modal-summary-stats').innerHTML = `<strong>Összesített Várható Utód BTE:</strong> ${sireData.total_offspring_ibc.toFixed(4)}<br><strong>Átlagos Várható Utód BTE:</strong> ${sireData.avg_offspring_ibc.toFixed(4)}`;
+        
+        modalCurrentPairings = sireData.pairings;
+        modalCurrentPage = 1;
+        renderModalDamList();
+        modal.style.display = 'block';
+    }
+
+    async function exportResults() {
+        const exportData = sireSummaryData.flatMap(sire => sire.pairings);
+        try {
+            const response = await fetch("{{ url_for('main.export_results') }}", {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ pairings: exportData })
+            });
+            if (!response.ok) throw new Error('Export failed');
+            const blob = await response.blob();
+            const url = window.URL.createObjectURL(blob);
+            const a = document.createElement('a');
+            a.style.display = 'none';
+            a.href = url;
+            a.download = 'simulation_results.xlsx';
+            document.body.appendChild(a);
+            a.click();
+            window.URL.revokeObjectURL(url);
+        } catch (error) {
+            console.error('Hiba az exportálás során:', error);
+            alert('Az exportálás sikertelen volt.');
+        }
+    }
+
+    // Event Listeners
+    document.getElementById('export-btn').addEventListener('click', exportResults);
+    document.querySelectorAll('.sortable-header').forEach(header => {
+        header.addEventListener('click', () => sortTable(header.dataset.sortKey, header));
+    });
+    tableBody.addEventListener('click', e => {
+        const targetButton = e.target.closest('.details-btn');
+        if (targetButton) {
+            showModal(parseInt(targetButton.dataset.sireId, 10));
+        }
+    });
+    document.getElementById('modal-pagination').addEventListener('click', e => {
+        if (e.target.id === 'modal-prev-btn') changeModalPage(-1);
+        if (e.target.id === 'modal-next-btn') changeModalPage(1);
+    });
+    closeButton.addEventListener('click', () => modal.style.display = 'none');
+    window.addEventListener('click', e => { if (e.target === modal) modal.style.display = 'none'; });
+
+    processData();
+});
+</script>
+{% endblock %}
