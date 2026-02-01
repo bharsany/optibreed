@@ -4,7 +4,7 @@
 {% block content %}
 <style>
     :root {
-        --selected-row-bg: #E0F7FA; /* Pastel light blue */
+        --selected-row-bg: #BEE1F8; /* Softer, more harmonious blue */
     }
     .mating-container { display: flex; flex-direction: column; gap: 3rem; }
     .selector-section { border: 1px solid #ccc; border-radius: var(--border-radius); padding: 1.5rem; background-color: #fff; }
@@ -24,10 +24,12 @@
     th { background-color: #f2f2f2; cursor: pointer; position: sticky; top: 0; user-select: none; }
     th:hover { background-color: #e9e9e9; }
     th .sort-indicator { display: inline-block; width: 1em; text-align: left; }
-    th.sort-asc .sort-indicator { content: '▲'; }
-    th.sort-desc .sort-indicator { content: '▼'; }
+    th.sort-asc .sort-indicator::after { content: ' ▲'; }
+    th.sort-desc .sort-indicator::after { content: ' ▼'; }
     tr.selected-row { background-color: var(--selected-row-bg); }
-    input[type=\"checkbox\"] { margin: 0 5px 0 0; }
+    tbody tr { cursor: pointer; }
+    /* Only disable pointer events on checkboxes in the table body, not the header */
+    tbody input[type="checkbox"] { pointer-events: none; }
 
     #export-button { margin-top: 2rem; }
 </style>
@@ -127,7 +129,7 @@ document.addEventListener('DOMContentLoaded', () => {
         const addBtn = document.getElementById(`add-${type}-btn`);
         const removeBtn = document.getElementById(`remove-${type}-btn`);
 
-        const farms = ['Minden', ...new Set(allAnimals.map(a => a.farm))];
+        const farms = ['Minden', ...[...new Set(allAnimals.map(a => a.farm))].sort()];
         farmFilter.innerHTML = farms.map(f => `<option value="${f}">${f}</option>`).join('');
 
         const renderGrids = () => {
@@ -136,22 +138,25 @@ document.addEventListener('DOMContentLoaded', () => {
                 !selectedAnimals.some(sa => sa.animal_id === animal.animal_id) &&
                 (selectedFarm === 'Minden' || animal.farm === selectedFarm)
             );
-            renderTable(availableGrid, available, type, 'available');
-            renderTable(selectedGrid, selectedAnimals, type, 'selected');
+            renderTable(availableGrid, available);
+            renderTable(selectedGrid, selectedAnimals);
         };
 
         const transferAnimals = (direction) => {
             const sourceGrid = direction === 'add' ? availableGrid : selectedGrid;
             const checkedRows = Array.from(sourceGrid.querySelectorAll('.row-select:checked'));
-            const idsToTransfer = checkedRows.map(cb => parseInt(cb.closest('tr').dataset.id, 10));
+            const idsToTransfer = new Set(checkedRows.map(cb => parseInt(cb.closest('tr').dataset.id, 10)));
 
             if (direction === 'add') {
-                const animalsToAdd = allAnimals.filter(a => idsToTransfer.includes(a.animal_id));
+                const animalsToAdd = allAnimals.filter(a => idsToTransfer.has(a.animal_id));
                 selectedAnimals.push(...animalsToAdd);
-            } else {
-                const newSelected = selectedAnimals.filter(a => !idsToTransfer.includes(a.animal_id));
-                if (type === 'sire') { selectedSires = newSelected; } else { selectedDams = newSelected; }
-                selectedAnimals = newSelected;
+            } else { // 'remove'
+                // Modify the array in-place to maintain the reference across scopes.
+                for (let i = selectedAnimals.length - 1; i >= 0; i--) {
+                    if (idsToTransfer.has(selectedAnimals[i].animal_id)) {
+                        selectedAnimals.splice(i, 1);
+                    }
+                }
             }
             renderGrids();
             updateExportForm();
@@ -161,98 +166,105 @@ document.addEventListener('DOMContentLoaded', () => {
         addBtn.addEventListener('click', () => transferAnimals('add'));
         removeBtn.addEventListener('click', () => transferAnimals('remove'));
 
-        renderGrids();
-    }
-    
-    function renderTable(tableEl, animals, type, gridType) {
-        tableEl.sortState = tableEl.sortState || {};
-        if (tableEl.sortState.column) {
-            const { column, direction } = tableEl.sortState;
-            animals.sort((a, b) => {
-                const valA = a[column], valB = b[column];
-                if (valA < valB) return direction === 'asc' ? -1 : 1;
-                if (valA > valB) return direction === 'asc' ? 1 : -1;
-                return 0;
+        function renderTable(tableEl, animals) {
+            tableEl.sortState = tableEl.sortState || {};
+            if (tableEl.sortState.column) {
+                const { column, direction } = tableEl.sortState;
+                animals.sort((a, b) => {
+                    const valA = a[column], valB = b[column];
+                    if (valA < valB) return direction === 'asc' ? -1 : 1;
+                    if (valA > valB) return direction === 'asc' ? 1 : -1;
+                    return 0;
+                });
+            }
+
+            const headers = [
+                { key: 'animal_id', label: 'Azonosító' },
+                { key: 'farm', label: 'Tenyészet' },
+                { key: 'ibc', label: 'IBC' }
+            ];
+            
+            tableEl.innerHTML = `<thead><tr><th><input type="checkbox" class="select-all"></th>${headers.map(h => `<th data-sort-key="${h.key}">${h.label} <span class="sort-indicator"></span></th>`).join('')}</tr></thead><tbody>${animals.map(animal => `
+                <tr data-id="${animal.animal_id}">
+                    <td><input type="checkbox" class="row-select"></td>
+                    <td>${animal.animal_id}</td>
+                    <td>${animal.farm}</td>
+                    <td>${animal.ibc.toFixed(4)}</td>
+                </tr>`).join('')}</tbody>`;
+
+            // --- Event Listeners ---
+            const tbody = tableEl.querySelector('tbody');
+            if (!tbody) return;
+            tbody.lastSelectedRowIndex = -1;
+
+            tbody.addEventListener('mousedown', (e) => {
+                e.preventDefault(); 
+                const row = e.target.closest('tr');
+                if (!row) return;
+
+                const rowIndex = Array.from(tbody.children).indexOf(row);
+                const checkbox = row.querySelector('.row-select');
+                const allRows = Array.from(tbody.children);
+
+                if (e.shiftKey && tbody.lastSelectedRowIndex > -1) {
+                    const start = Math.min(rowIndex, tbody.lastSelectedRowIndex);
+                    const end = Math.max(rowIndex, tbody.lastSelectedRowIndex);
+                    allRows.forEach((r, i) => {
+                        const cb = r.querySelector('.row-select');
+                        if (i >= start && i <= end) {
+                            cb.checked = true;
+                            r.classList.add('selected-row');
+                        } else if (!e.ctrlKey) {
+                            cb.checked = false;
+                            r.classList.remove('selected-row');
+                        }
+                    });
+                } else if (e.ctrlKey) {
+                    checkbox.checked = !checkbox.checked;
+                    row.classList.toggle('selected-row', checkbox.checked);
+                } else {
+                    const isCurrentlySelected = checkbox.checked && row.classList.contains('selected-row');
+                    const isOnlyOneSelected = allRows.filter(r => r.querySelector('.row-select').checked).length === 1;
+
+                    allRows.forEach(r => {
+                        r.querySelector('.row-select').checked = false;
+                        r.classList.remove('selected-row');
+                    });
+                    
+                    if (!isCurrentlySelected || !isOnlyOneSelected) {
+                        checkbox.checked = true;
+                        row.classList.add('selected-row');
+                    }
+                }
+                tbody.lastSelectedRowIndex = rowIndex;
+            });
+
+            tableEl.querySelector('.select-all').addEventListener('click', (e) => {
+                const isChecked = e.target.checked;
+                tbody.querySelectorAll('tr').forEach(row => {
+                    row.querySelector('.row-select').checked = isChecked;
+                    row.classList.toggle('selected-row', isChecked);
+                });
+            });
+
+            tableEl.querySelectorAll('th[data-sort-key]').forEach(th => {
+                const key = th.dataset.sortKey;
+                if (tableEl.sortState.column === key) {
+                    th.classList.add(tableEl.sortState.direction === 'asc' ? 'sort-asc' : 'sort-desc');
+                }
+
+                th.addEventListener('click', () => {
+                    const currentDir = tableEl.sortState.direction;
+                    let newDir = 'asc';
+                    if (tableEl.sortState.column === key && currentDir === 'asc') {
+                        newDir = 'desc';
+                    }
+                    tableEl.sortState = { column: key, direction: newDir };
+                    renderGrids(); // Just re-render the grids with the new sort state
+                });
             });
         }
-
-        const headers = [
-            { key: 'animal_id', label: 'Azonosító' },
-            { key: 'farm', label: 'Tenyészet' },
-            { key: 'ibc', label: 'IBC' }
-        ];
-        
-        tableEl.innerHTML = `<thead><tr><th><input type=\"checkbox\" class=\"select-all\"></th>${headers.map(h => `<th data-sort-key="${h.key}">${h.label} <span class=\"sort-indicator\"></span></th>`).join('')}</tr></thead><tbody>${animals.map(animal => `
-            <tr data-id="${animal.animal_id}">
-                <td><input type=\"checkbox\" class=\"row-select\"></td>
-                <td>${animal.animal_id}</td>
-                <td>${animal.farm}</td>
-                <td>${animal.ibc.toFixed(4)}</td>
-            </tr>`).join('')}</tbody>`;
-
-        // --- Event Listeners ---
-        const tbody = tableEl.querySelector('tbody');
-        tbody.lastSelectedRowIndex = -1;
-
-        // Row click for selection
-        tbody.addEventListener('click', (e) => {
-            const row = e.target.closest('tr');
-            if (!row) return;
-            const rowIndex = Array.from(tbody.children).indexOf(row);
-            const checkbox = row.querySelector('.row-select');
-
-            if (e.shiftKey && tbody.lastSelectedRowIndex > -1) {
-                const start = Math.min(rowIndex, tbody.lastSelectedRowIndex);
-                const end = Math.max(rowIndex, tbody.lastSelectedRowIndex);
-                Array.from(tbody.children).forEach((r, i) => {
-                    const cb = r.querySelector('.row-select');
-                    if (i >= start && i <= end) {
-                        cb.checked = true;
-                        r.classList.add('selected-row');
-                    } else if (!e.ctrlKey) {
-                        cb.checked = false;
-                        r.classList.remove('selected-row');
-                    }
-                });
-            } else if (e.ctrlKey) {
-                checkbox.checked = !checkbox.checked;
-                row.classList.toggle('selected-row', checkbox.checked);
-            } else {
-                const isSelected = checkbox.checked;
-                tbody.querySelectorAll('.row-select').forEach(cb => { cb.checked = false; });
-                tbody.querySelectorAll('tr').forEach(r => { r.classList.remove('selected-row'); });
-                checkbox.checked = !isSelected;
-                row.classList.toggle('selected-row', checkbox.checked);
-            }
-            tbody.lastSelectedRowIndex = rowIndex;
-        });
-
-        // Select all checkbox
-        tableEl.querySelector('.select-all').addEventListener('change', (e) => {
-            const isChecked = e.target.checked;
-            tbody.querySelectorAll('tr').forEach(row => {
-                row.querySelector('.row-select').checked = isChecked;
-                row.classList.toggle('selected-row', isChecked);
-            });
-        });
-
-        // Sorting
-        tableEl.querySelectorAll('th[data-sort-key]').forEach(th => {
-            const key = th.dataset.sortKey;
-            if (tableEl.sortState.column === key) {
-                th.classList.add(tableEl.sortState.direction === 'asc' ? 'sort-asc' : 'sort-desc');
-                th.querySelector('.sort-indicator').textContent = tableEl.sortState.direction === 'asc' ? '▲' : '▼';
-            }
-
-            th.addEventListener('click', () => {
-                const currentDir = tableEl.sortState.direction;
-                let newDir = 'asc';
-                if (tableEl.sortState.column === key && currentDir === 'asc') newDir = 'desc';
-                tableEl.sortState = { column: key, direction: newDir };
-                const renderFn = () => setupSelector(type, type === 'sire' ? allSires : allDams, type === 'sire' ? selectedSires : selectedDams);
-                renderFn();
-            });
-        });
+        renderGrids();
     }
 
     function updateExportForm() {
