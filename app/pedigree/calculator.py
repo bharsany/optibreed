@@ -9,10 +9,8 @@ class PedigreeCalculator:
         A cache is prepared for the traditional path-based calculation.
         """
         self.df = df.copy()
-        # Standardize data types
-        self.df['animal_id'] = pd.to_numeric(self.df['animal_id'], errors='coerce').astype(int)
-        for col in ['sire_id', 'dam_id']:
-            self.df[col] = pd.to_numeric(self.df[col], errors='coerce').astype('Int64')
+        # The animal_id, sire_id, and dam_id are now string-based composite keys.
+        # The numeric conversion is no longer needed and was causing errors.
         
         # Pre-calculate all Meuwissen-Luo IBCs for fast retrieval
         self.F_meuwissen_cache = analyzer.calculate_inbreeding_tabular(self.df)
@@ -24,7 +22,8 @@ class PedigreeCalculator:
         """
         Retrieves the pre-calculated Meuwissen-Luo inbreeding coefficient for an animal.
         """
-        return self.F_meuwissen_cache.get(animal_id, 0.0)
+        # The cache keys are now strings, so we ensure the input is a string.
+        return self.F_meuwissen_cache.get(str(animal_id), 0.0)
 
     def get_inbreeding_traditional(self, animal_id):
         """
@@ -33,7 +32,7 @@ class PedigreeCalculator:
         """
         # It's critical that the F_path_cache is passed to and updated by the analyzer.
         return analyzer.calculate_inbreeding_path_based_for_animal(
-            self.df, animal_id, self.F_path_cache
+            self.df, str(animal_id), self.F_path_cache
         )
 
     def calculate_coancestry(self, sire_id, dam_id):
@@ -44,7 +43,8 @@ class PedigreeCalculator:
         For performance during mating simulations, this method uses the fast, 
         pre-calculated Meuwissen-Luo IBCs for the F-value of common ancestors.
         """
-        sire_id, dam_id = int(sire_id), int(dam_id)
+        # The sire_id and dam_id are now strings, so the int conversion is removed.
+        sire_id, dam_id = str(sire_id), str(dam_id)
 
         # A map is needed for efficient path finding.
         df_map = {row.animal_id: (row.sire_id, row.dam_id) for row in self.df.itertuples()}

@@ -9,7 +9,7 @@ def calculate_inbreeding_tabular(df):
     Calculates inbreeding coefficients for all animals in the dataframe
     using the tabular method (Meuwissen-Luo), which is robust and efficient.
     """
-    df['animal_id'] = pd.to_numeric(df['animal_id'], errors='coerce').astype(int)
+    # The animal_id is now a string, so the numeric conversion has been removed.
     # Ensure indices are unique and sorted for consistent processing
     df = df.drop_duplicates(subset=['animal_id']).set_index('animal_id').sort_index()
     

@@ -17,6 +17,7 @@
     #progress-container { margin: 2rem 0; }
     #progress-status { text-align: center; margin-top: 0.5rem; color: #333; }
     .error-container { color: #D8000C; background-color: #FFD2D2; border: 1px solid #D8000C; border-radius: var(--border-radius); padding: 1rem; margin-bottom: 1rem; display: none; }
+    #grid-header { padding: 10px; background-color: #f2f2f2; font-weight: bold; border-radius: var(--border-radius) var(--border-radius) 0 0; }
 </style>
 
 <div class="upload-box">
@@ -46,6 +47,7 @@
 </div>
 
 <div class="grid-container" style="display:none;">
+    <div id="grid-header"></div>
     <div class="pagination-controls">
         <span>Oldalankénti sorok: </span>
         <select id="rows-per-page">
@@ -143,17 +145,25 @@
     let currentPage = 1;
 
     const headerMappings = {
-        'animal_id': 'Egyed azonosító', 'dam_id': 'Anya', 'sire_id': 'Apa', 'farm_id': 'Tenyészet',
-        'gender': 'Ivar', 'ibc_traditional': 'IBC (Hagyományos)', 'ibc_meuwissen': 'IBC (Meuwissen-Luo)'
+        'animal_id': 'Egyed azonosító', 
+        'dam_id': 'Anya', 
+        'sire_id': 'Apa', 
+        'farm': 'Tenyészet', 
+        'birth_year': 'Szül. Év', 
+        'gender': 'Ivar', 
+        'ibc_traditional': 'BTE (Hagyományos)', 
+        'ibc_meuwissen': 'BTE (Meuwissen-Luo)'
     };
-    const headers = ['animal_id', 'dam_id', 'sire_id', 'farm_id', 'gender', 'ibc_traditional', 'ibc_meuwissen'];
+    const headers = ['animal_id', 'dam_id', 'sire_id', 'farm', 'birth_year', 'gender', 'ibc_traditional', 'ibc_meuwissen'];
 
     function renderGrid() {
         const gridContainer = document.querySelector('.grid-container');
+        const gridHeader = document.getElementById('grid-header');
         if (!Array.isArray(data) || data.length === 0) {
             gridContainer.style.display = 'none';
             return;
         }
+        gridHeader.textContent = `Betöltött állatok: ${data.length}`;
         const tableHead = document.getElementById('grid-head');
         const tableBody = document.getElementById('grid-body');
         const pageInfo = document.getElementById('page-info');
@@ -173,7 +183,12 @@
         paginatedData.forEach(row => {
             let rowHtml = `<tr data-animal-id="${row.animal_id}">`;
             headers.forEach(header => {
-                let cellValue = row[header] === null || row[header] === undefined ? '' : row[header];
+                let cellValue = row[header];
+                if (header === 'farm' && (cellValue === undefined || cellValue === null)) {
+                    cellValue = row['farm_id']; // Fallback to farm_id
+                }
+                cellValue = cellValue === null || cellValue === undefined ? '' : cellValue;
+
                 if (header === 'gender') {
                     cellValue = cellValue === 'F' ? 'Nőstény' : (cellValue === 'M' ? 'Hím' : cellValue);
                 } else if (header === 'ibc_traditional' || header === 'ibc_meuwissen') {
