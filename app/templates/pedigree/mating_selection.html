@@ -135,14 +135,14 @@ document.addEventListener('DOMContentLoaded', () => {
         const addBtn = document.getElementById(`add-${type}-btn`);
         const removeBtn = document.getElementById(`remove-${type}-btn`);
 
-        const farms = ['Minden', ...[...new Set(allAnimals.map(a => a.farm))].sort()];
+        const farms = ['Minden', ...[...new Set(allAnimals.map(a => a.farm || 'Ismeretlen'))].sort()];
         farmFilter.innerHTML = farms.map(f => `<option value="${f}">${f}</option>`).join('');
 
         const renderGrids = () => {
             const selectedFarm = farmFilter.value;
             const available = allAnimals.filter(animal => 
                 !selectedAnimals.some(sa => sa.animal_id === animal.animal_id) &&
-                (selectedFarm === 'Minden' || animal.farm === selectedFarm)
+                (selectedFarm === 'Minden' || (animal.farm || 'Ismeretlen') === selectedFarm)
             );
             renderTable(availableGrid, available);
             renderTable(selectedGrid, selectedAnimals);
@@ -151,17 +151,15 @@ document.addEventListener('DOMContentLoaded', () => {
         const transferAnimals = (direction) => {
             const sourceGrid = direction === 'add' ? availableGrid : selectedGrid;
             const checkedRows = Array.from(sourceGrid.querySelectorAll('.row-select:checked'));
-            const idsToTransfer = new Set(checkedRows.map(cb => parseInt(cb.closest('tr').dataset.id, 10)));
+            const idsToTransfer = new Set(checkedRows.map(cb => cb.closest('tr').dataset.id));
 
             if (direction === 'add') {
                 const animalsToAdd = allAnimals.filter(a => idsToTransfer.has(a.animal_id));
                 selectedAnimals.push(...animalsToAdd);
             } else { // 'remove'
-                for (let i = selectedAnimals.length - 1; i >= 0; i--) {
-                    if (idsToTransfer.has(selectedAnimals[i].animal_id)) {
-                        selectedAnimals.splice(i, 1);
-                    }
-                }
+                selectedAnimals = selectedAnimals.filter(animal => !idsToTransfer.has(animal.animal_id));
+                if (type === 'sire') selectedSires = selectedAnimals;
+                if (type === 'dam') selectedDams = selectedAnimals;
             }
             renderGrids();
             updateActionForms();
@@ -177,6 +175,8 @@ document.addEventListener('DOMContentLoaded', () => {
                 const { column, direction } = tableEl.sortState;
                 animals.sort((a, b) => {
                     const valA = a[column], valB = b[column];
+                    if (valA === null || valA === 'Ismeretlen') return 1;
+                    if (valB === null || valB === 'Ismeretlen') return -1;
                     if (valA < valB) return direction === 'asc' ? -1 : 1;
                     if (valA > valB) return direction === 'asc' ? 1 : -1;
                     return 0;
@@ -186,15 +186,17 @@ document.addEventListener('DOMContentLoaded', () => {
             const headers = [
                 { key: 'animal_id', label: 'Azonosító' },
                 { key: 'farm', label: 'Tenyészet' },
-                { key: 'ibc', label: 'IBC' }
+                { key: 'birth_year', label: 'Szül. Év' },
+                { key: 'ibc', label: 'BTE' }
             ];
             
             tableEl.innerHTML = `<thead><tr><th><input type="checkbox" class="select-all"></th>${headers.map(h => `<th data-sort-key="${h.key}">${h.label} <span class="sort-indicator"></span></th>`).join('')}</tr></thead><tbody>${animals.map(animal => `
                 <tr data-id="${animal.animal_id}">
                     <td><input type="checkbox" class="row-select"></td>
                     <td>${animal.animal_id}</td>
-                    <td>${animal.farm}</td>
-                    <td>${animal.ibc.toFixed(4)}</td>
+                    <td>${animal.farm || 'Ismeretlen'}</td>
+                    <td>${animal.birth_year || 'Ismeretlen'}</td>
+                    <td>${(animal.ibc || 0).toFixed(4)}</td>
                 </tr>`).join('')}</tbody>`;
 
             const tbody = tableEl.querySelector('tbody');

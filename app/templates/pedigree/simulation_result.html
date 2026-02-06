@@ -43,9 +43,11 @@
             <tr>
                 <th class="sortable-header" data-sort-key="sire_id">Apa Azonosító<span class="sort-indicator"></span></th>
                 <th class="sortable-header" data-sort-key="sire_farm">Apa Tenyészet<span class="sort-indicator"></span></th>
+                <th class="sortable-header" data-sort-key="sire_birth_year">Apa Szül. Év<span class="sort-indicator"></span></th>
                 <th class="sortable-header" data-sort-key="sire_ibc">Apa BTE<span class="sort-indicator"></span></th>
                 <th class="sortable-header" data-sort-key="avg_offspring_ibc">Várható Utód BTE (Átlag)<span class="sort-indicator"></span></th>
-                <th class="sortable-header" data-sort-key="total_offspring_ibc">Várható Utód BTE (Összesen)<span class="sort-indicator"></span></th>
+                <th class="sortable-header" data-sort-key="min_offspring_ibc">Várható Utód BTE (Min)<span class="sort-indicator"></span></th>
+                <th class="sortable-header" data-sort-key="max_offspring_ibc">Várható Utód BTE (Max)<span class="sort-indicator"></span></th>
                 <th>Művelet</th>
             </tr>
         </thead>
@@ -67,6 +69,7 @@
                         <tr>
                             <th>Anya Azonosító</th>
                             <th>Anya Tenyészet</th>
+                            <th>Anya Szül. Év</th>
                             <th>Anya BTE</th>
                             <th>Várható Utód BTE</th>
                         </tr>
@@ -94,39 +97,57 @@ document.addEventListener('DOMContentLoaded', () => {
     function processData() {
         const sires = {};
         if (!pairings || pairings.length === 0) {
-            tableBody.innerHTML = '<tr><td colspan="6" style="text-align: center;">Nincsenek eredmények a megjelenítéshez.</td></tr>';
+            tableBody.innerHTML = `<tr><td colspan="8" style="text-align: center;">Nincsenek eredmények a megjelenítéshez.</td></tr>`;
             document.getElementById('export-btn').style.display = 'none';
             return;
         }
+
         pairings.forEach(p => {
             if (!sires[p.sire_id]) {
                 sires[p.sire_id] = {
-                    sire_id: p.sire_id, sire_farm: p.sire_farm, sire_ibc: p.sire_ibc,
-                    pairings: [], total_offspring_ibc: 0
+                    sire_id: p.sire_id, 
+                    sire_farm: p.sire_farm, 
+                    sire_birth_year: p.sire_birth_year,
+                    sire_ibc: p.sire_ibc,
+                    pairings: [], 
+                    total_offspring_ibc: 0,
+                    min_offspring_ibc: Infinity,
+                    max_offspring_ibc: -Infinity
                 };
             }
             sires[p.sire_id].pairings.push(p);
             sires[p.sire_id].total_offspring_ibc += p.offspring_ibc;
+            if (p.offspring_ibc < sires[p.sire_id].min_offspring_ibc) {
+                sires[p.sire_id].min_offspring_ibc = p.offspring_ibc;
+            }
+            if (p.offspring_ibc > sires[p.sire_id].max_offspring_ibc) {
+                sires[p.sire_id].max_offspring_ibc = p.offspring_ibc;
+            }
         });
+
         sireSummaryData = Object.values(sires).map(s => ({
             ...s,
             avg_offspring_ibc: s.pairings.length > 0 ? s.total_offspring_ibc / s.pairings.length : 0
         }));
+
         renderTable(sireSummaryData);
     }
 
     function renderTable(data) {
         tableBody.innerHTML = '';
+        if (data.length === 0) return;
         data.forEach(sire => {
             const row = document.createElement('tr');
             row.dataset.sireId = sire.sire_id;
             row.innerHTML = `
                 <td>${sire.sire_id}</td>
-                <td>${sire.sire_farm}</td>
-                <td>${sire.sire_ibc.toFixed(4)}</td>
-                <td>${sire.avg_offspring_ibc.toFixed(4)}</td>
-                <td>${sire.total_offspring_ibc.toFixed(4)}</td>
-                <td><button class="button details-btn" data-sire-id="${sire.sire_id}">Részletek...</button></td>
+                <td>${sire.sire_farm || 'Ismeretlen'}</td>
+                <td>${sire.sire_birth_year || 'Ismeretlen'}</td>
+                <td>${(sire.sire_ibc || 0).toFixed(4)}</td>
+                <td>${(sire.avg_offspring_ibc || 0).toFixed(4)}</td>
+                <td>${(sire.min_offspring_ibc === Infinity ? 0 : sire.min_offspring_ibc).toFixed(4)}</td>
+                <td>${(sire.max_offspring_ibc === -Infinity ? 0 : sire.max_offspring_ibc).toFixed(4)}</td>
+                <td><button class="button details-btn">Részletek...</button></td>
             `;
             tableBody.appendChild(row);
         });
@@ -134,13 +155,12 @@ document.addEventListener('DOMContentLoaded', () => {
     }
 
     function highlightLowestAverage() {
-        if (sireSummaryData.length === 0) return;
         let lowestAvg = Infinity;
         sireSummaryData.forEach(s => {
             if (s.avg_offspring_ibc < lowestAvg) lowestAvg = s.avg_offspring_ibc;
         });
         tableBody.querySelectorAll('tr').forEach(row => {
-            const sireId = parseInt(row.dataset.sireId, 10);
+            const sireId = row.dataset.sireId;
             const sire = sireSummaryData.find(s => s.sire_id === sireId);
             if (sire && sire.avg_offspring_ibc === lowestAvg) {
                 row.classList.add('lowest-ibc');
@@ -155,6 +175,8 @@ document.addEventListener('DOMContentLoaded', () => {
         sireSummaryData.sort((a, b) => {
             const valA = a[key];
             const valB = b[key];
+            if (valA === null || typeof valA === 'undefined') return 1;
+            if (valB === null || typeof valB === 'undefined') return -1;
             if (valA < valB) return direction === 'asc' ? -1 : 1;
             if (valA > valB) return direction === 'asc' ? 1 : -1;
             return 0;
@@ -171,29 +193,26 @@ document.addEventListener('DOMContentLoaded', () => {
         const modalTbody = document.querySelector('#modal-dam-table tbody');
         modalTbody.innerHTML = paginatedItems.map(p => `
             <tr>
-                <td>${p.dam_id}</td><td>${p.dam_farm}</td>
-                <td>${p.dam_ibc.toFixed(4)}</td><td>${p.offspring_ibc.toFixed(4)}</td>
+                <td>${p.dam_id}</td>
+                <td>${p.dam_farm || 'Ismeretlen'}</td>
+                <td>${p.dam_birth_year || 'Ismeretlen'}</td>
+                <td>${(p.dam_ibc || 0).toFixed(4)}</td>
+                <td>${(p.offspring_ibc || 0).toFixed(4)}</td>
             </tr>
         `).join('');
         
         const paginationContainer = document.getElementById('modal-pagination');
         const totalPages = Math.ceil(modalCurrentPairings.length / MODAL_ROWS_PER_PAGE);
-        if (totalPages <= 1) {
-            paginationContainer.innerHTML = '';
-            return;
-        }
-        paginationContainer.innerHTML = `
+        paginationContainer.innerHTML = totalPages > 1 ? `
             <button id="modal-prev-btn" class="button" ${modalCurrentPage === 1 ? 'disabled' : ''}>Előző</button>
             <span id="modal-page-info">Oldal ${modalCurrentPage} / ${totalPages}</span>
             <button id="modal-next-btn" class="button" ${modalCurrentPage === totalPages ? 'disabled' : ''}>Következő</button>
-        `;
+        ` : '';
     }
 
     function changeModalPage(direction) {
         const totalPages = Math.ceil(modalCurrentPairings.length / MODAL_ROWS_PER_PAGE);
-        modalCurrentPage += direction;
-        if (modalCurrentPage < 1) modalCurrentPage = 1;
-        if (modalCurrentPage > totalPages) modalCurrentPage = totalPages;
+        modalCurrentPage = Math.max(1, Math.min(totalPages, modalCurrentPage + direction));
         renderModalDamList();
     }
 
@@ -201,8 +220,12 @@ document.addEventListener('DOMContentLoaded', () => {
         const sireData = sireSummaryData.find(s => s.sire_id === sireId);
         if (!sireData) return;
 
-        document.getElementById('modal-sire-details').innerHTML = `<strong>Apa Azonosító:</strong> ${sireData.sire_id} | <strong>Tenyészet:</strong> ${sireData.sire_farm} | <strong>Apa BTE:</strong> ${sireData.sire_ibc.toFixed(4)}`;
-        document.getElementById('modal-summary-stats').innerHTML = `<strong>Összesített Várható Utód BTE:</strong> ${sireData.total_offspring_ibc.toFixed(4)}<br><strong>Átlagos Várható Utód BTE:</strong> ${sireData.avg_offspring_ibc.toFixed(4)}`;
+        document.getElementById('modal-sire-details').innerHTML = `<strong>Apa Azonosító:</strong> ${sireData.sire_id} | <strong>Tenyészet:</strong> ${sireData.sire_farm || 'Ismeretlen'} | <strong>Szül. Év:</strong> ${sireData.sire_birth_year || 'Ismeretlen'} | <strong>Apa BTE:</strong> ${(sireData.sire_ibc || 0).toFixed(4)}`;
+        
+        const stats = `<strong>Átlagos Várható Utód BTE:</strong> ${(sireData.avg_offspring_ibc || 0).toFixed(4)}<br>
+                       <strong>Min Várható Utód BTE:</strong> ${(sireData.min_offspring_ibc === Infinity ? 0 : sireData.min_offspring_ibc).toFixed(4)}<br>
+                       <strong>Max Várható Utód BTE:</strong> ${(sireData.max_offspring_ibc === -Infinity ? 0 : sireData.max_offspring_ibc).toFixed(4)}`;
+        document.getElementById('modal-summary-stats').innerHTML = stats;
         
         modalCurrentPairings = sireData.pairings;
         modalCurrentPage = 1;
@@ -211,23 +234,35 @@ document.addEventListener('DOMContentLoaded', () => {
     }
 
     async function exportResults() {
-        const exportData = sireSummaryData.flatMap(sire => sire.pairings);
+        const exportData = sireSummaryData.flatMap(sire => sire.pairings.map(p => ({
+            sire_id: sire.sire_id,
+            sire_farm: sire.sire_farm,
+            sire_birth_year: sire.sire_birth_year,
+            sire_ibc: sire.sire_ibc,
+            dam_id: p.dam_id,
+            dam_farm: p.dam_farm,
+            dam_birth_year: p.dam_birth_year,
+            dam_ibc: p.dam_ibc,
+            offspring_ibc: p.offspring_ibc
+        })));
+
         try {
             const response = await fetch("{{ url_for('main.export_results') }}", {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({ pairings: exportData })
             });
-            if (!response.ok) throw new Error('Export failed');
+            if (!response.ok) throw new Error('Export failed with status: ' + response.status);
             const blob = await response.blob();
             const url = window.URL.createObjectURL(blob);
             const a = document.createElement('a');
             a.style.display = 'none';
             a.href = url;
-            a.download = 'simulation_results.xlsx';
+            a.download = 'szimulacios_eredmenyek.xlsx';
             document.body.appendChild(a);
             a.click();
             window.URL.revokeObjectURL(url);
+            document.body.removeChild(a);
         } catch (error) {
             console.error('Hiba az exportálás során:', error);
             alert('Az exportálás sikertelen volt.');
@@ -240,9 +275,9 @@ document.addEventListener('DOMContentLoaded', () => {
         header.addEventListener('click', () => sortTable(header.dataset.sortKey, header));
     });
     tableBody.addEventListener('click', e => {
-        const targetButton = e.target.closest('.details-btn');
-        if (targetButton) {
-            showModal(parseInt(targetButton.dataset.sireId, 10));
+        const sireId = e.target.closest('tr').dataset.sireId;
+        if (e.target.classList.contains('details-btn')) {
+            showModal(sireId);
         }
     });
     document.getElementById('modal-pagination').addEventListener('click', e => {
