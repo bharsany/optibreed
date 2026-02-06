@@ -1,5 +1,6 @@
 from flask import Blueprint, render_template, request, jsonify, current_app, Response, session, send_file
 import pandas as pd
+import numpy as np
 import json
 import os
 import uuid
@@ -26,18 +27,45 @@ def upload_and_process():
 
     file = request.files['pedigree_file']
     try:
-        df = pd.read_csv(file)
-        df = df.rename(columns=lambda x: x.strip().lower().replace(" ", "_"))
-        expected_columns = {'animal_id', 'sire_id', 'dam_id'}
+        df = pd.read_csv(file, dtype=str).rename(columns=lambda x: x.strip().lower())
+
+        expected_columns = {
+            "faj", "fajta", "orszagkod", "fulszam", "szuletesi_ev", "ivar_kod",
+            "apaorsko", "apafulszam", "anyaorsko", "anyafulsza", "tenyeszet"
+        }
         if not expected_columns.issubset(df.columns):
             missing = sorted(list(expected_columns - set(df.columns)))
             return jsonify({"error": f"Hiányzó oszlopok: {', '.join(missing)}"}), 400
-        
-        for col in ['sire_id', 'dam_id']:
-            if col in df.columns:
-                df[col] = pd.to_numeric(df[col], errors='coerce').astype('Int64')
-        
-        return jsonify(df.to_dict(orient='records'))
+
+        # Safely create composite IDs, handling None/NaN values
+        df['animal_id'] = df['orszagkod'].fillna('') + df['fulszam'].fillna('')
+        df['sire_id'] = df['apaorsko'].fillna('') + df['apafulszam'].fillna('')
+        df['dam_id'] = df['anyaorsko'].fillna('') + df['anyafulsza'].fillna('')
+
+        # Replace empty strings with None for consistent null handling
+        df['sire_id'] = df['sire_id'].replace('', None)
+        df['dam_id'] = df['dam_id'].replace('', None)
+
+        # Robust gender mapping
+        df['ivar_kod'] = pd.to_numeric(df['ivar_kod'], errors='coerce')
+        df['gender'] = df['ivar_kod'].map({1: 'M', 2: 'F'})
+
+        df.rename(columns={
+            'szuletesi_ev': 'birth_year',
+            'faj': 'species',
+            'fajta': 'breed',
+            'tenyeszet': 'farm'
+        }, inplace=True)
+
+        final_df = df[[
+            'animal_id', 'sire_id', 'dam_id', 'gender', 'birth_year',
+            'species', 'breed', 'farm'
+        ]].copy()
+
+        # Final cleanup to ensure no NaN values are in the output
+        final_df = final_df.replace({np.nan: None})
+
+        return jsonify(final_df.to_dict(orient='records'))
 
     except Exception as e:
         current_app.logger.error(f"File processing error: {e}", exc_info=True)
@@ -115,13 +143,18 @@ def get_animals(session_id):
     # Safely get IBC values for each animal
     df['ibc'] = df['animal_id'].apply(lambda id: calculator.get_inbreeding_meuwissen(id))
 
-    # Standardize farm column
-    if 'farm_id' in df.columns and 'farm' not in df.columns:
-        df.rename(columns={'farm_id': 'farm'}, inplace=True)
-    elif 'farm_id' not in df.columns and 'farm' not in df.columns:
+    # Standardize and fill missing values for farm and birth_year
+    if 'farm' not in df.columns:
         df['farm'] = 'Ismeretlen'
+    else:
+        df['farm'] = df['farm'].fillna('Ismeretlen')
+        
+    if 'birth_year' not in df.columns:
+        df['birth_year'] = 'Ismeretlen'
+    else:
+        df['birth_year'] = df['birth_year'].fillna('Ismeretlen')
 
-    # Ensure 'gender' column exists
+    # Ensure 'gender' column exists and is properly formatted
     if 'gender' not in df.columns:
         dam_ids = df['dam_id'].dropna().unique()
         sire_ids = df['sire_id'].dropna().unique()
@@ -131,7 +164,10 @@ def get_animals(session_id):
     
     df['gender'] = df['gender'].astype(str).str.upper()
 
-    columns_to_return = ['animal_id', 'farm', 'ibc']
+    # Define columns to return
+    columns_to_return = ['animal_id', 'farm', 'birth_year', 'ibc']
+    
+    # Separate sires and dams
     sires = df[df['gender'] == 'M'][columns_to_return].to_dict(orient='records')
     dams = df[df['gender'] == 'F'][columns_to_return].to_dict(orient='records')
     
@@ -152,16 +188,18 @@ def export_results():
         output_df.rename(columns={
             'sire_id': 'Apa Azonosító',
             'sire_farm': 'Apa Tenyészet',
+            'sire_birth_year': 'Apa Szül. Év',
             'sire_ibc': 'Apa BTE',
             'dam_id': 'Anya Azonosító',
             'dam_farm': 'Anya Tenyészet',
+            'dam_birth_year': 'Anya Szül. Év',
             'dam_ibc': 'Anya BTE',
             'offspring_ibc': 'Várható Utód BTE'
         }, inplace=True)
         
         final_columns = [
-            'Apa Azonosító', 'Apa Tenyészet', 'Apa BTE',
-            'Anya Azonosító', 'Anya Tenyészet', 'Anya BTE',
+            'Apa Azonosító', 'Apa Tenyészet', 'Apa Szül. Év', 'Apa BTE',
+            'Anya Azonosító', 'Anya Tenyészet', 'Anya Szül. Év', 'Anya BTE',
             'Várható Utód BTE'
         ]
         output_df = output_df[final_columns]
@@ -192,13 +230,11 @@ def simulation_results():
         df = current_app.sessions[session_id]['data'].copy()
         calculator = current_app.sessions[session_id]['calculator']
 
-        if 'farm_id' in df.columns:
-            df.rename(columns={'farm_id': 'farm'}, inplace=True)
-        elif 'farm' not in df.columns:
-            df['farm'] = 'Ismeretlen'
+        df['farm'] = df['farm'].fillna('Ismeretlen')
+        df['birth_year'] = df['birth_year'].fillna('Ismeretlen')
 
-        sire_ids = [int(id) for id in request.form.get('sire_ids', '').split(',') if id]
-        dam_ids = [int(id) for id in request.form.get('dam_ids', '').split(',') if id]
+        sire_ids = [id for id in request.form.get('sire_ids', '').split(',') if id]
+        dam_ids = [id for id in request.form.get('dam_ids', '').split(',') if id]
 
         sire_details = df[df['animal_id'].isin(sire_ids)].to_dict('records')
         dam_details = df[df['animal_id'].isin(dam_ids)].to_dict('records')
@@ -212,9 +248,11 @@ def simulation_results():
                 results_data.append({
                     'sire_id': sire['animal_id'],
                     'sire_farm': sire['farm'],
+                    'sire_birth_year': sire['birth_year'],
                     'sire_ibc': sire_ibc,
                     'dam_id': dam['animal_id'],
                     'dam_farm': dam['farm'],
+                    'dam_birth_year': dam['birth_year'],
                     'dam_ibc': dam_ibc,
                     'offspring_ibc': offspring_ibc
                 })
