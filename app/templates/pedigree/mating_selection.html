@@ -59,7 +59,7 @@
                     <button id="remove-dam-btn" title="Kiválasztottak eltávolítása">&lt;&lt;</button>
                 </div>
                 <div class="grid-panel">
-                    <div class="grid-header">Kiválasztott anyák</div>
+                    <div class="grid-header">Kiválasztott anyák <span id="dam-selected-count">(0)</span></div>
                     <div class="animal-grid"><table id="dam-selected-grid"></table></div>
                 </div>
             </div>
@@ -81,7 +81,7 @@
                     <button id="remove-sire-btn" title="Kiválasztottak eltávolítása">&lt;&lt;</button>
                 </div>
                 <div class="grid-panel">
-                    <div class="grid-header">Kiválasztott apák</div>
+                    <div class="grid-header">Kiválasztott apák <span id="sire-selected-count">(0)</span></div>
                     <div class="animal-grid"><table id="sire-selected-grid"></table></div>
                 </div>
             </div>
@@ -146,6 +146,11 @@ document.addEventListener('DOMContentLoaded', () => {
             );
             renderTable(availableGrid, available);
             renderTable(selectedGrid, selectedAnimals);
+
+            const selectedCountEl = document.getElementById(`${type}-selected-count`);
+            if (selectedCountEl) {
+                selectedCountEl.textContent = `(${selectedAnimals.length})`;
+            }
         };
 
         const transferAnimals = (direction) => {

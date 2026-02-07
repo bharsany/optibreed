@@ -39,16 +39,13 @@ def upload_and_process():
             missing = sorted(list(expected_columns - set(df.columns)))
             return jsonify({"error": f"Hiányzó oszlopok: {', '.join(missing)}"}), 400
 
-        # Safely create composite IDs, handling None/NaN values
         df['animal_id'] = df['orszagkod'].fillna('') + df['fulszam'].fillna('')
         df['sire_id'] = df['apaorsko'].fillna('') + df['apafulszam'].fillna('')
         df['dam_id'] = df['anyaorsko'].fillna('') + df['anyafulsza'].fillna('')
 
-        # Replace empty strings with None for consistent null handling
         df['sire_id'] = df['sire_id'].replace('', None)
         df['dam_id'] = df['dam_id'].replace('', None)
 
-        # Robust gender mapping
         df['ivar_kod'] = pd.to_numeric(df['ivar_kod'], errors='coerce')
         df['gender'] = df['ivar_kod'].map({1: 'M', 2: 'F'})
 
@@ -64,9 +61,18 @@ def upload_and_process():
             'species', 'breed', 'farm'
         ]].copy()
 
-        # Final cleanup to ensure no NaN values are in the output
+        all_animal_ids = set(final_df['animal_id'].unique())
+        all_parent_ids = set(final_df['sire_id'].dropna().unique()) | set(final_df['dam_id'].dropna().unique())
+        missing_parents = list(all_parent_ids - all_animal_ids)
+
         final_df = final_df.replace({np.nan: None})
         
+        session_id = str(uuid.uuid4())
+        calculator = PedigreeCalculator(final_df.copy())
+        if not hasattr(current_app, 'sessions'):
+            current_app.sessions = {}
+        current_app.sessions[session_id] = {'data': final_df, 'calculator': calculator}
+
         end_time = time.time()
         load_time = round(end_time - start_time, 2)
         animal_count = len(final_df)
@@ -74,28 +80,14 @@ def upload_and_process():
         return jsonify({
             'records': final_df.to_dict(orient='records'),
             'animal_count': animal_count,
-            'load_time': load_time
+            'load_time': load_time,
+            'missing_parents': missing_parents,
+            'session_id': session_id
         })
 
     except Exception as e:
         current_app.logger.error(f"File processing error: {e}", exc_info=True)
         return jsonify({"error": f"Hiba a fájl feldolgozása közben: {e}"}), 500
-
-@main_blueprint.route('/start_calculation', methods=['POST'])
-def start_calculation():
-    data = request.get_json()
-    if not data:
-        return jsonify({"error": 'Nincs adat a számításhoz.'}), 400
-    
-    try:
-        session_id = str(uuid.uuid4())
-        df = pd.DataFrame(data)
-        calculator = PedigreeCalculator(df)
-        current_app.sessions[session_id] = {'data': df, 'calculator': calculator}
-        return jsonify({'session_id': session_id})
-    except Exception as e:
-        current_app.logger.error(f"Error starting calculation: {e}")
-        return jsonify({'error': 'Szerverhiba a számítás előkészítésekor.'}), 500
 
 @main_blueprint.route('/calculate_ibcs')
 def calculate_ibcs_route():

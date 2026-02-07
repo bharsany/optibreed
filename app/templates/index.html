@@ -20,6 +20,7 @@
     #grid-header { padding: 10px; background-color: #f2f2f2; font-weight: bold; border-radius: var(--border-radius) var(--border-radius) 0 0; display: flex; justify-content: space-between; }
     #algorithm-select { padding: 8px 12px; border: 1px solid #ddd; border-radius: var(--border-radius); background-color: white; cursor: pointer; }
     .button { display: inline-flex; align-items: center; gap: 0.5rem; }
+    .missing-parent { color: #e74c3c; font-style: italic; font-weight: bold; }
 </style>
 
 <div class="upload-box">
@@ -88,6 +89,7 @@
 <script>
     let data = [];
     let currentSessionId = null;
+    let missingParents = new Set();
 
     function updateFileName() {
         const input = document.getElementById('pedigree_file');
@@ -95,38 +97,9 @@
         fileNameDisplay.textContent = input.files.length > 0 ? `Kiválasztott fájl: ${input.files[0].name}` : 'Nincs fájl kiválasztva.';
     }
 
-    async function saveDataToServer() {
-        if (!Array.isArray(data) || data.length === 0) return null;
-        try {
-            const response = await fetch('/start_calculation', {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify(data.map(({ ibc_traditional, ibc_meuwissen, ...rest }) => rest)),
-            });
-            if (!response.ok) {
-                const errorResult = await response.json();
-                throw new Error(errorResult.error || 'Ismeretlen hiba a munkamenet indításakor.');
-            }
-            const result = await response.json();
-            return result.session_id;
-        } catch (error) {
-            alert(`Hiba az adatok mentésekor: ${error.message}`);
-            return null;
-        }
-    }
-
     document.getElementById('go-to-mating').addEventListener('click', async () => {
-        const matingButton = document.getElementById('go-to-mating');
-        matingButton.disabled = true;
-        matingButton.textContent = 'Adatok előkészítése...';
-        if (!currentSessionId) {
-            currentSessionId = await saveDataToServer();
-        }
         if (currentSessionId) {
             window.location.href = `/pedigree/mating_selection?session_id=${currentSessionId}`;
-        } else {
-            matingButton.disabled = false;
-            matingButton.textContent = 'Tovább a Párosításhoz';
         }
     });
 
@@ -154,6 +127,8 @@
             }
             const result = await response.json();
             data = result.records;
+            currentSessionId = result.session_id;
+            missingParents = new Set(result.missing_parents || []);
             headers = ['animal_id', 'dam_id', 'sire_id', 'farm', 'birth_year', 'gender'];
             currentPage = 1;
             renderGrid();
@@ -218,6 +193,11 @@
                 }
                 cellValue = cellValue === null || cellValue === undefined ? '' : cellValue;
 
+                let classList = `cell-${header}`;
+                if ((header === 'sire_id' || header === 'dam_id') && missingParents.has(cellValue)) {
+                    classList += ' missing-parent';
+                }
+
                 if (header === 'gender') {
                     cellValue = cellValue === 'F' ? 'Nőstény' : (cellValue === 'M' ? 'Hím' : cellValue);
                 } else if (header === 'ibc_traditional' || header === 'ibc_meuwissen') {
@@ -225,7 +205,7 @@
                         cellValue = cellValue.toFixed(4);
                     }
                 }
-                rowHtml += `<td class="cell-${header}">${cellValue}</td>`;
+                rowHtml += `<td class="${classList}">${cellValue}</td>`;
             });
             rowHtml += '</tr>';
             tableBody.innerHTML += rowHtml;
@@ -244,17 +224,15 @@
         });
 
         document.getElementById('calculate-ibc').addEventListener('click', async () => {
-            const calcButton = document.getElementById('calculate-ibc');
-            const calcButtonContent = calcButton.innerHTML;
-            calcButton.disabled = true;
-            calcButton.innerHTML = 'Számítás előkészítése...';
-            currentSessionId = await saveDataToServer();
             if (!currentSessionId) {
-                calcButton.disabled = false;
-                calcButton.innerHTML = calcButtonContent;
+                alert("Hiba: Nincs érvényes munkamenet. Kérjük, töltsön fel egy fájlt.");
                 return;
             }
 
+            const calcButton = document.getElementById('calculate-ibc');
+            const calcButtonContent = calcButton.innerHTML;
+            calcButton.disabled = true;
+            
             const progressContainer = document.getElementById('progress-container');
             const progressBar = document.getElementById('progress-bar');
             const progressStatus = document.getElementById('progress-status');
