@@ -7,6 +7,7 @@ import uuid
 from app.pedigree.calculator import PedigreeCalculator
 import logging
 from io import BytesIO
+import time
 
 # Blueprints
 main_blueprint = Blueprint('main', __name__)
@@ -26,6 +27,7 @@ def upload_and_process():
         return jsonify({"error": "Nincs fájl kiválasztva."}), 400
 
     file = request.files['pedigree_file']
+    start_time = time.time()
     try:
         df = pd.read_csv(file, dtype=str).rename(columns=lambda x: x.strip().lower())
 
@@ -64,8 +66,16 @@ def upload_and_process():
 
         # Final cleanup to ensure no NaN values are in the output
         final_df = final_df.replace({np.nan: None})
+        
+        end_time = time.time()
+        load_time = round(end_time - start_time, 2)
+        animal_count = len(final_df)
 
-        return jsonify(final_df.to_dict(orient='records'))
+        return jsonify({
+            'records': final_df.to_dict(orient='records'),
+            'animal_count': animal_count,
+            'load_time': load_time
+        })
 
     except Exception as e:
         current_app.logger.error(f"File processing error: {e}", exc_info=True)
@@ -90,6 +100,7 @@ def start_calculation():
 @main_blueprint.route('/calculate_ibcs')
 def calculate_ibcs_route():
     session_id = request.args.get('session_id')
+    algorithm = request.args.get('algorithm', 'both')
     if not session_id or session_id not in current_app.sessions:
         return Response("Hiba: Érvénytelen vagy lejárt munkamenet.", status=400)
 
@@ -97,26 +108,28 @@ def calculate_ibcs_route():
 
     def generate_results_stream():
         with app.app_context():
+            start_time = time.time()
             try:
                 calculator = current_app.sessions[session_id]['calculator']
                 animal_ids = calculator.df['animal_id'].tolist()
                 total_animals = len(animal_ids)
 
                 for i, animal_id in enumerate(animal_ids):
-                    ibc_meuwissen = calculator.get_inbreeding_meuwissen(animal_id)
-                    ibc_traditional = calculator.get_inbreeding_traditional(animal_id)
+                    data = {'animal_id': animal_id}
                     
+                    if algorithm == 'meuwissen' or algorithm == 'both':
+                        data['ibc_meuwissen'] = calculator.get_inbreeding_meuwissen(animal_id)
+                    if algorithm == 'traditional' or algorithm == 'both':
+                        data['ibc_traditional'] = calculator.get_inbreeding_traditional(animal_id)
+
                     progress = int(((i + 1) / total_animals) * 100)
+                    data['progress'] = progress
                     
-                    data = {
-                        'animal_id': animal_id,
-                        'ibc_meuwissen': ibc_meuwissen,
-                        'ibc_traditional': ibc_traditional,
-                        'progress': progress
-                    }
                     yield f"data: {json.dumps(data)}\n\n"
                 
-                yield f"event: complete\ndata: {json.dumps({'message': 'A számítás befejeződött.'})}\n\n"
+                end_time = time.time()
+                calculation_time = round(end_time - start_time, 2)
+                yield f"event: complete\ndata: {json.dumps({'message': 'A számítás befejeződött.', 'calculation_time': calculation_time})}\n\n"
 
             except Exception as e:
                 current_app.logger.error(f"Calculation error in stream: {e}", exc_info=True)

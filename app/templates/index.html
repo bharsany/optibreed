@@ -34,9 +34,14 @@
     </form>
 </div>
 
-<div style="margin-bottom: 2rem; display: flex; gap: 1rem;">
+<div style="margin-bottom: 2rem; display: flex; align-items: center; gap: 1rem;">
+    <select id="algorithm-select" class="button">
+        <option value="both">Hagyományos és Meuwissen-Luo</option>
+        <option value="traditional">Hagyományos</option>
+        <option value="meuwissen">Meuwissen-Luo</option>
+    </select>
     <button id="calculate-ibc" class="button" disabled>Beltenyésztettség számítása</button>
-    <button id="go-to-mating" class="button" disabled>Tovább a párosításhoz</button>
+    <button id="go-to-mating" class="button" style="display: none;">Tovább a párosításhoz</button>
 </div>
 
 <div id="progress-container" style="display: none;">
@@ -81,7 +86,7 @@
             const response = await fetch('/start_calculation', {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify(data),
+                body: JSON.stringify(data.map(({ ibc_traditional, ibc_meuwissen, ...rest }) => rest)),
             });
             if (!response.ok) {
                 const errorResult = await response.json();
@@ -99,7 +104,9 @@
         const matingButton = document.getElementById('go-to-mating');
         matingButton.disabled = true;
         matingButton.textContent = 'Adatok előkészítése...';
-        currentSessionId = await saveDataToServer();
+        if (!currentSessionId) {
+            currentSessionId = await saveDataToServer();
+        }
         if (currentSessionId) {
             window.location.href = `/pedigree/mating_selection?session_id=${currentSessionId}`;
         } else {
@@ -115,46 +122,52 @@
         const errorContainer = document.getElementById('error-container');
         const calcButton = document.getElementById('calculate-ibc');
         const matingButton = document.getElementById('go-to-mating');
+        const gridHeader = document.getElementById('grid-header');
         errorContainer.style.display = 'none';
         errorContainer.textContent = '';
 
         try {
             const response = await fetch(form.action, { method: 'POST', body: formData });
-            const responseText = await response.text();
             if (!response.ok) {
                 let errorMsg = `HTTP error! Status: ${response.status}`;
+                const responseText = await response.text();
                 try { errorMsg = JSON.parse(responseText).error || errorMsg; } catch (e) { errorMsg = responseText.length < 200 ? responseText : errorMsg; }
                 throw new Error(errorMsg);
             }
-            data = JSON.parse(responseText);
+            const result = await response.json();
+            data = result.records;
+            headers = ['animal_id', 'dam_id', 'sire_id', 'farm', 'birth_year', 'gender'];
             currentPage = 1;
             renderGrid();
+            gridHeader.textContent = `Betöltött állatok: ${result.animal_count} (Betöltési idő: ${result.load_time}s)`;
             calcButton.disabled = false;
-            matingButton.disabled = false;
+            matingButton.style.display = 'none';
+            matingButton.disabled = true;
         } catch (error) {
             errorContainer.textContent = error.message;
             errorContainer.style.display = 'block';
             data = [];
             renderGrid();
             calcButton.disabled = true;
+            matingButton.style.display = 'none';
             matingButton.disabled = true;
         }
     });
-    
+
     const rowsPerPage = document.getElementById('rows-per-page');
     let currentPage = 1;
 
     const headerMappings = {
-        'animal_id': 'Egyed azonosító', 
-        'dam_id': 'Anya', 
-        'sire_id': 'Apa', 
-        'farm': 'Tenyészet', 
-        'birth_year': 'Szül. Év', 
-        'gender': 'Ivar', 
-        'ibc_traditional': 'BTE (Hagyományos)', 
+        'animal_id': 'Egyed azonosító',
+        'dam_id': 'Anya',
+        'sire_id': 'Apa',
+        'farm': 'Tenyészet',
+        'birth_year': 'Szül. Év',
+        'gender': 'Ivar',
+        'ibc_traditional': 'BTE (Hagyományos)',
         'ibc_meuwissen': 'BTE (Meuwissen-Luo)'
     };
-    const headers = ['animal_id', 'dam_id', 'sire_id', 'farm', 'birth_year', 'gender', 'ibc_traditional', 'ibc_meuwissen'];
+    let headers = ['animal_id', 'dam_id', 'sire_id', 'farm', 'birth_year', 'gender'];
 
     function renderGrid() {
         const gridContainer = document.querySelector('.grid-container');
@@ -163,7 +176,6 @@
             gridContainer.style.display = 'none';
             return;
         }
-        gridHeader.textContent = `Betöltött állatok: ${data.length}`;
         const tableHead = document.getElementById('grid-head');
         const tableBody = document.getElementById('grid-body');
         const pageInfo = document.getElementById('page-info');
@@ -185,7 +197,7 @@
             headers.forEach(header => {
                 let cellValue = row[header];
                 if (header === 'farm' && (cellValue === undefined || cellValue === null)) {
-                    cellValue = row['farm_id']; // Fallback to farm_id
+                    cellValue = row['farm_id'];
                 }
                 cellValue = cellValue === null || cellValue === undefined ? '' : cellValue;
 
@@ -194,8 +206,6 @@
                 } else if (header === 'ibc_traditional' || header === 'ibc_meuwissen') {
                     if (typeof cellValue === 'number') {
                         cellValue = cellValue.toFixed(4);
-                    } else {
-                        cellValue = '...';
                     }
                 }
                 rowHtml += `<td class="cell-${header}">${cellValue}</td>`;
@@ -235,31 +245,65 @@
             progressBar.textContent = '0%';
             progressStatus.textContent = 'Kapcsolódás a számítási folyamhoz...';
 
-            const evtSource = new EventSource(`/calculate_ibcs?session_id=${currentSessionId}`);
+            const algorithm = document.getElementById('algorithm-select').value;
             
+            // Add placeholder columns and re-render grid once
+            if ((algorithm === 'both' || algorithm === 'traditional') && !headers.includes('ibc_traditional')) {
+                headers.push('ibc_traditional');
+                data.forEach(d => d.ibc_traditional = '...');
+            }
+            if ((algorithm === 'both' || algorithm === 'meuwissen') && !headers.includes('ibc_meuwissen')) {
+                headers.push('ibc_meuwissen');
+                data.forEach(d => d.ibc_meuwissen = '...');
+            }
+            renderGrid();
+
+            const evtSource = new EventSource(`/calculate_ibcs?session_id=${currentSessionId}&algorithm=${algorithm}`);
+
             evtSource.onmessage = function(event) {
                 const eventData = JSON.parse(event.data);
                 
+                // Update data array in the background
                 const animalIndex = data.findIndex(animal => animal.animal_id == eventData.animal_id);
                 if (animalIndex !== -1) {
-                    data[animalIndex].ibc_meuwissen = eventData.ibc_meuwissen;
-                    data[animalIndex].ibc_traditional = eventData.ibc_traditional;
+                    if (eventData.hasOwnProperty('ibc_meuwissen')) {
+                        data[animalIndex].ibc_meuwissen = eventData.ibc_meuwissen;
+                    }
+                    if (eventData.hasOwnProperty('ibc_traditional')) {
+                         data[animalIndex].ibc_traditional = eventData.ibc_traditional;
+                    }
                 }
 
+                // Update progress bar
                 progressBar.style.width = eventData.progress + '%';
                 progressBar.textContent = eventData.progress + '%';
                 progressStatus.textContent = `Feldolgozva: ${eventData.animal_id}, Folyamat: ${eventData.progress} %`;
 
-                renderGrid();
+                // Directly update the cell in the table if it's visible
+                const row = document.querySelector(`tr[data-animal-id="${eventData.animal_id}"]`);
+                if (row) {
+                    if (eventData.hasOwnProperty('ibc_meuwissen')) {
+                        const cell = row.querySelector('.cell-ibc_meuwissen');
+                        if (cell) cell.textContent = eventData.ibc_meuwissen.toFixed(4);
+                    }
+                    if (eventData.hasOwnProperty('ibc_traditional')) {
+                        const cell = row.querySelector('.cell-ibc_traditional');
+                        if (cell) cell.textContent = eventData.ibc_traditional.toFixed(4);
+                    }
+                }
             };
 
             evtSource.addEventListener('complete', function(event) {
-                progressStatus.textContent = 'Számítás befejezve!';
+                const eventData = JSON.parse(event.data);
+                progressStatus.textContent = `Számítás befejezve! (Idő: ${eventData.calculation_time}s)`;
                 progressBar.style.width = '100%';
                 progressBar.textContent = '100%';
                 setTimeout(() => { progressContainer.style.display = 'none'; }, 3000);
                 evtSource.close();
                 finalizeButton();
+                const matingButton = document.getElementById('go-to-mating');
+                matingButton.style.display = 'inline-block';
+                matingButton.disabled = false;
             });
 
             evtSource.addEventListener('error', function(event) {
