@@ -418,7 +418,7 @@ def simulation_results_stream():
     df = current_app.sessions[session_id]['data'].copy()
     calculator = current_app.sessions[session_id]['calculator']
     sessions = current_app.sessions
-    
+
     df['farm'] = df['farm'].fillna('Ismeretlen')
     df['birth_year'] = df['birth_year'].fillna('Ismeretlen')
 

@@ -523,8 +523,7 @@ endblock %} {% block content %}
         const progressModal = document.getElementById("progress-modal");
         progressModal.style.display = "flex";
         const totalPairs = selectedSires.length * selectedDams.length;
-        document.getElementById("progress-text-total").textContent =
-          totalPairs;
+        document.getElementById("progress-text-total").textContent = totalPairs;
 
         // Prepare data for streaming endpoint
         const formData = new FormData();
