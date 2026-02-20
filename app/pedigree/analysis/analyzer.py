@@ -4,31 +4,38 @@ import numpy as np
 
 # --- ALGORITHM 1: Tabular Method (Meuwissen-Luo) ---
 
-def calculate_inbreeding_tabular(df):
+
+def calculate_inbreeding_tabular(df, progress_callback=None):
     """
     Calculates inbreeding coefficients for all animals in the dataframe
     using the tabular method (Meuwissen-Luo), which is robust and efficient.
+
+    Args:
+        df: Pedigree dataframe
+        progress_callback: Optional callable(current, total) for progress updates
     """
     # The animal_id is now a string, so the numeric conversion has been removed.
     # Ensure indices are unique and sorted for consistent processing
-    df = df.drop_duplicates(subset=['animal_id']).set_index('animal_id').sort_index()
-    
+    df = df.drop_duplicates(subset=['animal_id']).set_index(
+        'animal_id').sort_index()
+
     animal_pos = {animal_id: i for i, animal_id in enumerate(df.index)}
     n = len(df.index)
     A = np.zeros((n, n))
-    
+
     for i, animal_id in enumerate(df.index):
         sire_id = df.loc[animal_id, 'sire_id']
         dam_id = df.loc[animal_id, 'dam_id']
-        
+
         # Get positions, handling cases where parents are not in the pedigree
         sire_pos = animal_pos.get(sire_id, -1) if pd.notna(sire_id) else -1
         dam_pos = animal_pos.get(dam_id, -1) if pd.notna(dam_id) else -1
-        
+
         # Both parents known
         if sire_pos != -1 and dam_pos != -1:
             # Get coancestry between parents
-            coancestry = A[sire_pos, dam_pos] if sire_pos < dam_pos else A[dam_pos, sire_pos]
+            coancestry = A[sire_pos,
+                           dam_pos] if sire_pos < dam_pos else A[dam_pos, sire_pos]
             A[i, i] = 1 + 0.5 * coancestry
             # Set relationship with other animals
             for j in range(i):
@@ -46,24 +53,30 @@ def calculate_inbreeding_tabular(df):
         else:
             A[i, i] = 1.0
 
-    inbreeding_coeffs = {animal_id: A[i, i] - 1 for i, animal_id in enumerate(df.index)}
+        # Emit progress every 50 animals or at the end for more frequent updates
+        if progress_callback and (i % 50 == 0 or i == n - 1):
+            progress_callback(i + 1, n)
+
+    inbreeding_coeffs = {animal_id: A[i, i] -
+                         1 for i, animal_id in enumerate(df.index)}
     return inbreeding_coeffs
 
 # --- ALGORITHM 2: Path-finding Method ---
 
+
 def find_all_paths_to_ancestor(df_map, start_id, end_id):
     """Finds all unique paths from a start animal to a specific ancestor."""
     all_paths = []
-    
+
     # Queue for BFS: stores tuples of (current_animal_id, path_to_current)
     queue = [(start_id, [])]
-    
+
     while queue:
         current_id, path = queue.pop(0)
-        
+
         # Add current animal to path
         new_path = path + [current_id]
-        
+
         # If we reached the target ancestor, store the path length and continue
         if current_id == end_id:
             all_paths.append(len(new_path) - 1)
@@ -78,8 +91,9 @@ def find_all_paths_to_ancestor(df_map, start_id, end_id):
                 queue.append((sire_id, new_path))
             if pd.notna(dam_id):
                 queue.append((dam_id, new_path))
-                
+
     return all_paths
+
 
 def _calculate_inbreeding_for_animal_path_based(df_map, animal_id, F_cache):
     """
@@ -95,46 +109,58 @@ def _calculate_inbreeding_for_animal_path_based(df_map, animal_id, F_cache):
         return 0.0
 
     sire_id, dam_id = parents
-    
+
     # This is not a proper coancestry calculation, but follows the classic path-method logic
     # which finds common ancestors and sums their contributions.
-    
+
     # Find ancestors for sire and dam
     q_sire, q_dam = [sire_id], [dam_id]
     sire_ancestors, dam_ancestors = {sire_id}, {dam_id}
-    
+
     head = 0
     while head < len(q_sire):
-        curr = q_sire[head]; head+=1
+        curr = q_sire[head]
+        head += 1
         p = df_map.get(curr)
-        if p: 
-            if pd.notna(p[0]) and p[0] not in sire_ancestors: sire_ancestors.add(p[0]); q_sire.append(p[0])
-            if pd.notna(p[1]) and p[1] not in sire_ancestors: sire_ancestors.add(p[1]); q_sire.append(p[1])
+        if p:
+            if pd.notna(p[0]) and p[0] not in sire_ancestors:
+                sire_ancestors.add(p[0])
+                q_sire.append(p[0])
+            if pd.notna(p[1]) and p[1] not in sire_ancestors:
+                sire_ancestors.add(p[1])
+                q_sire.append(p[1])
 
     head = 0
     while head < len(q_dam):
-        curr = q_dam[head]; head+=1
+        curr = q_dam[head]
+        head += 1
         p = df_map.get(curr)
         if p:
-            if pd.notna(p[0]) and p[0] not in dam_ancestors: dam_ancestors.add(p[0]); q_dam.append(p[0])
-            if pd.notna(p[1]) and p[1] not in dam_ancestors: dam_ancestors.add(p[1]); q_dam.append(p[1])
-            
+            if pd.notna(p[0]) and p[0] not in dam_ancestors:
+                dam_ancestors.add(p[0])
+                q_dam.append(p[0])
+            if pd.notna(p[1]) and p[1] not in dam_ancestors:
+                dam_ancestors.add(p[1])
+                q_dam.append(p[1])
+
     common_ancestors = sire_ancestors.intersection(dam_ancestors)
-    
+
     total_inbreeding = 0.0
     for ancestor_id in common_ancestors:
         # Recursively calculate the ancestor's own inbreeding coefficient
-        ancestor_inbreeding = _calculate_inbreeding_for_animal_path_based(df_map, ancestor_id, F_cache)
-        
+        ancestor_inbreeding = _calculate_inbreeding_for_animal_path_based(
+            df_map, ancestor_id, F_cache)
+
         # Find all paths from sire and dam to the common ancestor
         sire_paths = find_all_paths_to_ancestor(df_map, sire_id, ancestor_id)
         dam_paths = find_all_paths_to_ancestor(df_map, dam_id, ancestor_id)
-        
+
         # Sum the contributions from this ancestor
         for n in sire_paths:
             for m in dam_paths:
-                total_inbreeding += (0.5)**(n + m + 1) * (1 + ancestor_inbreeding)
-    
+                total_inbreeding += (0.5)**(n + m + 1) * \
+                    (1 + ancestor_inbreeding)
+
     F_cache[animal_id] = total_inbreeding
     return total_inbreeding
 
@@ -145,5 +171,6 @@ def calculate_inbreeding_path_based_for_animal(df, animal_id, F_cache):
     It prepares a map for efficient parent lookup.
     """
     # Create a mapping for faster parent lookups
-    df_map = {row.animal_id: (row.sire_id, row.dam_id) for row in df.itertuples()}
+    df_map = {row.animal_id: (row.sire_id, row.dam_id)
+              for row in df.itertuples()}
     return _calculate_inbreeding_for_animal_path_based(df_map, animal_id, F_cache)

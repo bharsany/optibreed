@@ -1,292 +1,604 @@
-{% extends 'base.html' %}
-{% block title %}Párosítási kiválasztás - OptiBreed{% endblock %}
-
-{% block content %}
+{% extends 'base.html' %} {% block title %}Párosítási kiválasztás - OptiBreed{%
+endblock %} {% block content %}
 <style>
-    :root {
-        --selected-row-bg: #BEE1F8; /* Softer, more harmonious blue */
-    }
-    .mating-container { display: flex; flex-direction: column; gap: 3rem; }
-    .selector-section { border: 1px solid #ccc; border-radius: var(--border-radius); padding: 1.5rem; background-color: #fff; }
-    .selector-section h2 { margin-top: 0; padding-bottom: 0.5rem; border-bottom: 2px solid var(--primary-color); }
-    .selector-grid { display: grid; grid-template-columns: 1fr auto 1fr; gap: 1rem; align-items: center; }
-    .grid-panel { border: 1px solid #ddd; border-radius: var(--border-radius); overflow: hidden; display: flex; flex-direction: column; }
-    .grid-header { padding: 0.5rem 1rem; background-color: #f7f7f7; display: flex; align-items: center; gap: 0.5rem; font-weight: bold; color: #333; }
-    .farm-filter { flex-grow: 1; }
-    .farm-filter select { width: 100%; padding: 8px; border-radius: var(--border-radius); border: 1px solid #ccc; }
-    .animal-grid { height: 300px; overflow-y: auto; }
-    .transfer-buttons { display: flex; flex-direction: column; gap: 0.5rem; }
-    .transfer-buttons button { padding: 10px; cursor: pointer; border-radius: var(--border-radius); background-color: var(--secondary-color); color: white; border: none; font-size: 1.2rem; line-height: 1; }
-    .transfer-buttons button:hover { background-color: var(--primary-color); }
+  :root {
+    --selected-row-bg: #bee1f8; /* Softer, more harmonious blue */
+  }
+  .mating-container {
+    display: flex;
+    flex-direction: column;
+    gap: 3rem;
+  }
+  .selector-section {
+    border: 1px solid #ccc;
+    border-radius: var(--border-radius);
+    padding: 1.5rem;
+    background-color: #fff;
+  }
+  .selector-section h2 {
+    margin-top: 0;
+    padding-bottom: 0.5rem;
+    border-bottom: 2px solid var(--primary-color);
+  }
+  .selector-grid {
+    display: grid;
+    grid-template-columns: 1fr auto 1fr;
+    gap: 1rem;
+    align-items: center;
+  }
+  .grid-panel {
+    border: 1px solid #ddd;
+    border-radius: var(--border-radius);
+    overflow: hidden;
+    display: flex;
+    flex-direction: column;
+  }
+  .grid-header {
+    padding: 0.5rem 1rem;
+    background-color: #f7f7f7;
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    font-weight: bold;
+    color: #333;
+  }
+  .farm-filter {
+    flex-grow: 1;
+  }
+  .farm-filter select {
+    width: 100%;
+    padding: 8px;
+    border-radius: var(--border-radius);
+    border: 1px solid #ccc;
+  }
+  .animal-grid {
+    height: 300px;
+    overflow-y: auto;
+  }
+  .transfer-buttons {
+    display: flex;
+    flex-direction: column;
+    gap: 0.5rem;
+  }
+  .transfer-buttons button {
+    padding: 10px;
+    cursor: pointer;
+    border-radius: var(--border-radius);
+    background-color: var(--secondary-color);
+    color: white;
+    border: none;
+    font-size: 1.2rem;
+    line-height: 1;
+  }
+  .transfer-buttons button:hover {
+    background-color: var(--primary-color);
+  }
 
-    table { width: 100%; border-collapse: collapse; }
-    th, td { padding: 10px; text-align: left; border-bottom: 1px solid #ddd; }
-    th { background-color: #f2f2f2; cursor: pointer; position: sticky; top: 0; user-select: none; }
-    th:hover { background-color: #e9e9e9; }
-    th .sort-indicator { display: inline-block; width: 1em; text-align: left; }
-    th.sort-asc .sort-indicator::after { content: ' ▲'; }
-    th.sort-desc .sort-indicator::after { content: ' ▼'; }
-    tr.selected-row { background-color: var(--selected-row-bg); }
-    tbody tr { cursor: pointer; }
-    tbody input[type="checkbox"] { pointer-events: none; }
+  table {
+    width: 100%;
+    border-collapse: collapse;
+  }
+  th,
+  td {
+    padding: 10px;
+    text-align: left;
+    border-bottom: 1px solid #ddd;
+  }
+  th {
+    background-color: #f2f2f2;
+    cursor: pointer;
+    position: sticky;
+    top: 0;
+    user-select: none;
+  }
+  th:hover {
+    background-color: #e9e9e9;
+  }
+  th .sort-indicator {
+    display: inline-block;
+    width: 1em;
+    text-align: left;
+  }
+  th.sort-asc .sort-indicator::after {
+    content: " ▲";
+  }
+  th.sort-desc .sort-indicator::after {
+    content: " ▼";
+  }
+  tr.selected-row {
+    background-color: var(--selected-row-bg);
+  }
+  tbody tr {
+    cursor: pointer;
+  }
+  tbody input[type="checkbox"] {
+    pointer-events: none;
+  }
 
-    .action-buttons-container {
-        margin-top: 2rem;
-        display: flex;
-        gap: 1rem;
-        align-items: center;
-    }
+  .action-buttons-container {
+    margin-top: 2rem;
+    display: flex;
+    gap: 1rem;
+    align-items: center;
+  }
+
+  /* Progress Modal Styles */
+  .progress-modal {
+    display: none;
+    position: fixed;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    background-color: rgba(0, 0, 0, 0.5);
+    z-index: 1000;
+    align-items: center;
+    justify-content: center;
+  }
+
+  .progress-modal.show {
+    display: flex;
+  }
+
+  .progress-modal-content {
+    background-color: white;
+    border-radius: var(--border-radius);
+    padding: 2rem;
+    width: 90%;
+    max-width: 400px;
+    box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+  }
+
+  .progress-modal h2 {
+    margin-top: 0;
+    margin-bottom: 1rem;
+    color: #333;
+  }
+
+  .progress-bar-container {
+    width: 100%;
+    background-color: #e0e0e0;
+    border-radius: var(--border-radius);
+    overflow: hidden;
+    height: 30px;
+  }
+
+  .progress-bar-fill {
+    height: 100%;
+    background-color: var(--primary-color);
+    transition: width 0.3s ease;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    color: white;
+    font-weight: bold;
+    font-size: 0.9rem;
+  }
+
+  .progress-text {
+    margin-top: 1rem;
+    text-align: center;
+    color: #666;
+    font-size: 0.9rem;
+  }
 </style>
 
 <div class="container">
-    <h1>Párosítási kiválasztás</h1>
-    <p>Válassza ki a tenyészállatokat a szimulációhoz. Bal oldalon láthatók a farm szerint szűrt, elérhető állatok. Jobb oldalon a párosításhoz kiválasztott állatok listája.</p>
+  <h1>Párosítási kiválasztás</h1>
+  <p>
+    Válassza ki a tenyészállatokat a szimulációhoz. Bal oldalon láthatók a farm
+    szerint szűrt, elérhető állatok. Jobb oldalon a párosításhoz kiválasztott
+    állatok listája.
+  </p>
 
-    <div class="mating-container">
-        <!-- Dams Section -->
-        <div class="selector-section">
-            <h2>Anyák (nőstények) kiválasztása</h2>
-            <div class="selector-grid">
-                <div class="grid-panel">
-                    <div class="grid-header">
-                        <label for="dam-farm-filter">Tenyészet:</label>
-                        <div class="farm-filter"><select id="dam-farm-filter"></select></div>
-                    </div>
-                    <div class="animal-grid"><table id="dam-available-grid"></table></div>
-                </div>
-                <div class="transfer-buttons">
-                    <button id="add-dam-btn" title="Kiválasztottak hozzáadása">&gt;&gt;</button>
-                    <button id="remove-dam-btn" title="Kiválasztottak eltávolítása">&lt;&lt;</button>
-                </div>
-                <div class="grid-panel">
-                    <div class="grid-header">Kiválasztott anyák <span id="dam-selected-count">(0)</span></div>
-                    <div class="animal-grid"><table id="dam-selected-grid"></table></div>
-                </div>
+  <div class="mating-container">
+    <!-- Dams Section -->
+    <div class="selector-section">
+      <h2>Anyák (nőstények) kiválasztása</h2>
+      <div class="selector-grid">
+        <div class="grid-panel">
+          <div class="grid-header">
+            <label for="dam-farm-filter">Tenyészet:</label>
+            <div class="farm-filter">
+              <select id="dam-farm-filter"></select>
             </div>
+          </div>
+          <div class="animal-grid"><table id="dam-available-grid"></table></div>
         </div>
-
-        <!-- Sires Section -->
-        <div class="selector-section">
-            <h2>Apák (hímek) kiválasztása</h2>
-            <div class="selector-grid">
-                <div class="grid-panel">
-                    <div class="grid-header">
-                        <label for="sire-farm-filter">Tenyészet:</label>
-                        <div class="farm-filter"><select id="sire-farm-filter"></select></div>
-                    </div>
-                    <div class="animal-grid"><table id="sire-available-grid"></table></div>
-                </div>
-                <div class="transfer-buttons">
-                    <button id="add-sire-btn" title="Kiválasztottak hozzáadása">&gt;&gt;</button>
-                    <button id="remove-sire-btn" title="Kiválasztottak eltávolítása">&lt;&lt;</button>
-                </div>
-                <div class="grid-panel">
-                    <div class="grid-header">Kiválasztott apák <span id="sire-selected-count">(0)</span></div>
-                    <div class="animal-grid"><table id="sire-selected-grid"></table></div>
-                </div>
-            </div>
+        <div class="transfer-buttons">
+          <button id="add-dam-btn" title="Kiválasztottak hozzáadása">
+            &gt;&gt;
+          </button>
+          <button id="remove-dam-btn" title="Kiválasztottak eltávolítása">
+            &lt;&lt;
+          </button>
         </div>
+        <div class="grid-panel">
+          <div class="grid-header">
+            Kiválasztott anyák <span id="dam-selected-count">(0)</span>
+          </div>
+          <div class="animal-grid"><table id="dam-selected-grid"></table></div>
+        </div>
+      </div>
     </div>
 
-    <!-- Action Buttons -->
-    <div class="action-buttons-container">
-        <form id="results-form" method="POST" action="{{ url_for('main.simulation_results') }}" style="margin: 0;">
-            <input type="hidden" name="session_id" value="{{ session_id }}">
-            <input type="hidden" id="results_sire_ids" name="sire_ids">
-            <input type="hidden" id="results_dam_ids" name="dam_ids">
-            <button type="submit" class="button">Eredmények Megtekintése</button>
-        </form>
+    <!-- Sires Section -->
+    <div class="selector-section">
+      <h2>Apák (hímek) kiválasztása</h2>
+      <div class="selector-grid">
+        <div class="grid-panel">
+          <div class="grid-header">
+            <label for="sire-farm-filter">Tenyészet:</label>
+            <div class="farm-filter">
+              <select id="sire-farm-filter"></select>
+            </div>
+          </div>
+          <div class="animal-grid">
+            <table id="sire-available-grid"></table>
+          </div>
+        </div>
+        <div class="transfer-buttons">
+          <button id="add-sire-btn" title="Kiválasztottak hozzáadása">
+            &gt;&gt;
+          </button>
+          <button id="remove-sire-btn" title="Kiválasztottak eltávolítása">
+            &lt;&lt;
+          </button>
+        </div>
+        <div class="grid-panel">
+          <div class="grid-header">
+            Kiválasztott apák <span id="sire-selected-count">(0)</span>
+          </div>
+          <div class="animal-grid"><table id="sire-selected-grid"></table></div>
+        </div>
+      </div>
     </div>
+  </div>
+
+  <!-- Action Buttons -->
+  <div class="action-buttons-container">
+    <form
+      id="results-form"
+      method="POST"
+      action="{{ url_for('main.simulation_results') }}"
+      style="margin: 0"
+    >
+      <input type="hidden" name="session_id" value="{{ session_id }}" />
+      <input type="hidden" id="results_sire_ids" name="sire_ids" />
+      <input type="hidden" id="results_dam_ids" name="dam_ids" />
+      <button type="submit" class="button">Eredmények Megtekintése</button>
+    </form>
+  </div>
+</div>
+
+<!-- Progress Modal -->
+<div id="progress-modal" class="progress-modal">
+  <div class="progress-modal-content">
+    <h2>Párosítások számítása</h2>
+    <div class="progress-bar-container">
+      <div id="progress-bar-fill" class="progress-bar-fill" style="width: 0%">
+        0%
+      </div>
+    </div>
+    <div class="progress-text">
+      <span id="progress-text-current">0</span> /
+      <span id="progress-text-total">0</span> párosítás
+    </div>
+  </div>
 </div>
 
 <script>
-document.addEventListener('DOMContentLoaded', () => {
+  document.addEventListener("DOMContentLoaded", () => {
     const SESSION_ID = "{{ session_id }}";
-    
-    let allSires = [], allDams = [], selectedSires = [], selectedDams = [];
+
+    let allSires = [],
+      allDams = [],
+      selectedSires = [],
+      selectedDams = [];
 
     async function initialize() {
-        const data = await fetchAnimals();
-        if (!data) return;
-        
-        allSires = data.sires;
-        allDams = data.dams;
+      const data = await fetchAnimals();
+      if (!data) return;
 
-        setupSelector('dam', allDams, selectedDams);
-        setupSelector('sire', allSires, selectedSires);
+      allSires = data.sires;
+      allDams = data.dams;
+
+      setupSelector("dam", allDams, selectedDams);
+      setupSelector("sire", allSires, selectedSires);
     }
 
     async function fetchAnimals() {
-        try {
-            const response = await fetch(`/pedigree/animals/${SESSION_ID}`);
-            if (!response.ok) throw new Error(`Szerverhiba: ${response.statusText}`);
-            return await response.json();
-        } catch (error) {
-            console.error("Hiba az állatok lekérésekor:", error);
-            alert("Hiba történt az állatok adatainak lekérése közben. Kérjük, próbálja meg később.");
-            return null;
-        }
+      try {
+        const response = await fetch(`/pedigree/animals/${SESSION_ID}`);
+        if (!response.ok)
+          throw new Error(`Szerverhiba: ${response.statusText}`);
+        return await response.json();
+      } catch (error) {
+        console.error("Hiba az állatok lekérésekor:", error);
+        alert(
+          "Hiba történt az állatok adatainak lekérése közben. Kérjük, próbálja meg később.",
+        );
+        return null;
+      }
     }
 
     function setupSelector(type, allAnimals, selectedAnimals) {
-        const farmFilter = document.getElementById(`${type}-farm-filter`);
-        const availableGrid = document.getElementById(`${type}-available-grid`);
-        const selectedGrid = document.getElementById(`${type}-selected-grid`);
-        const addBtn = document.getElementById(`add-${type}-btn`);
-        const removeBtn = document.getElementById(`remove-${type}-btn`);
+      const farmFilter = document.getElementById(`${type}-farm-filter`);
+      const availableGrid = document.getElementById(`${type}-available-grid`);
+      const selectedGrid = document.getElementById(`${type}-selected-grid`);
+      const addBtn = document.getElementById(`add-${type}-btn`);
+      const removeBtn = document.getElementById(`remove-${type}-btn`);
 
-        const farms = ['Minden', ...[...new Set(allAnimals.map(a => a.farm || 'Ismeretlen'))].sort()];
-        farmFilter.innerHTML = farms.map(f => `<option value="${f}">${f}</option>`).join('');
+      const farms = [
+        "Minden",
+        ...[...new Set(allAnimals.map((a) => a.farm || "Ismeretlen"))].sort(),
+      ];
+      farmFilter.innerHTML = farms
+        .map((f) => `<option value="${f}">${f}</option>`)
+        .join("");
 
-        const renderGrids = () => {
-            const selectedFarm = farmFilter.value;
-            const available = allAnimals.filter(animal => 
-                !selectedAnimals.some(sa => sa.animal_id === animal.animal_id) &&
-                (selectedFarm === 'Minden' || (animal.farm || 'Ismeretlen') === selectedFarm)
-            );
-            renderTable(availableGrid, available);
-            renderTable(selectedGrid, selectedAnimals);
+      const renderGrids = () => {
+        const selectedFarm = farmFilter.value;
+        const available = allAnimals.filter(
+          (animal) =>
+            !selectedAnimals.some((sa) => sa.animal_id === animal.animal_id) &&
+            (selectedFarm === "Minden" ||
+              (animal.farm || "Ismeretlen") === selectedFarm),
+        );
+        renderTable(availableGrid, available);
+        renderTable(selectedGrid, selectedAnimals);
 
-            const selectedCountEl = document.getElementById(`${type}-selected-count`);
-            if (selectedCountEl) {
-                selectedCountEl.textContent = `(${selectedAnimals.length})`;
-            }
-        };
+        const selectedCountEl = document.getElementById(
+          `${type}-selected-count`,
+        );
+        if (selectedCountEl) {
+          selectedCountEl.textContent = `(${selectedAnimals.length})`;
+        }
+      };
 
-        const transferAnimals = (direction) => {
-            const sourceGrid = direction === 'add' ? availableGrid : selectedGrid;
-            const checkedRows = Array.from(sourceGrid.querySelectorAll('.row-select:checked'));
-            const idsToTransfer = new Set(checkedRows.map(cb => cb.closest('tr').dataset.id));
+      const transferAnimals = (direction) => {
+        const sourceGrid = direction === "add" ? availableGrid : selectedGrid;
+        const checkedRows = Array.from(
+          sourceGrid.querySelectorAll(".row-select:checked"),
+        );
+        const idsToTransfer = new Set(
+          checkedRows.map((cb) => cb.closest("tr").dataset.id),
+        );
 
-            if (direction === 'add') {
-                const animalsToAdd = allAnimals.filter(a => idsToTransfer.has(a.animal_id));
-                selectedAnimals.push(...animalsToAdd);
-            } else { // 'remove'
-                selectedAnimals = selectedAnimals.filter(animal => !idsToTransfer.has(animal.animal_id));
-                if (type === 'sire') selectedSires = selectedAnimals;
-                if (type === 'dam') selectedDams = selectedAnimals;
-            }
-            renderGrids();
-            updateActionForms();
-        };
+        if (direction === "add") {
+          const animalsToAdd = allAnimals.filter((a) =>
+            idsToTransfer.has(a.animal_id),
+          );
+          selectedAnimals.push(...animalsToAdd);
+        } else {
+          // 'remove'
+          selectedAnimals = selectedAnimals.filter(
+            (animal) => !idsToTransfer.has(animal.animal_id),
+          );
+          if (type === "sire") selectedSires = selectedAnimals;
+          if (type === "dam") selectedDams = selectedAnimals;
+        }
+        renderGrids();
+        updateActionForms();
+      };
 
-        farmFilter.addEventListener('change', renderGrids);
-        addBtn.addEventListener('click', () => transferAnimals('add'));
-        removeBtn.addEventListener('click', () => transferAnimals('remove'));
+      farmFilter.addEventListener("change", renderGrids);
+      addBtn.addEventListener("click", () => transferAnimals("add"));
+      removeBtn.addEventListener("click", () => transferAnimals("remove"));
 
-        function renderTable(tableEl, animals) {
-            tableEl.sortState = tableEl.sortState || {};
-            if (tableEl.sortState.column) {
-                const { column, direction } = tableEl.sortState;
-                animals.sort((a, b) => {
-                    const valA = a[column], valB = b[column];
-                    if (valA === null || valA === 'Ismeretlen') return 1;
-                    if (valB === null || valB === 'Ismeretlen') return -1;
-                    if (valA < valB) return direction === 'asc' ? -1 : 1;
-                    if (valA > valB) return direction === 'asc' ? 1 : -1;
-                    return 0;
-                });
-            }
+      function renderTable(tableEl, animals) {
+        tableEl.sortState = tableEl.sortState || {};
+        if (tableEl.sortState.column) {
+          const { column, direction } = tableEl.sortState;
+          animals.sort((a, b) => {
+            const valA = a[column],
+              valB = b[column];
+            if (valA === null || valA === "Ismeretlen") return 1;
+            if (valB === null || valB === "Ismeretlen") return -1;
+            if (valA < valB) return direction === "asc" ? -1 : 1;
+            if (valA > valB) return direction === "asc" ? 1 : -1;
+            return 0;
+          });
+        }
 
-            const headers = [
-                { key: 'animal_id', label: 'Azonosító' },
-                { key: 'farm', label: 'Tenyészet' },
-                { key: 'birth_year', label: 'Szül. Év' },
-                { key: 'ibc', label: 'BTE' }
-            ];
-            
-            tableEl.innerHTML = `<thead><tr><th><input type="checkbox" class="select-all"></th>${headers.map(h => `<th data-sort-key="${h.key}">${h.label} <span class="sort-indicator"></span></th>`).join('')}</tr></thead><tbody>${animals.map(animal => `
+        const headers = [
+          { key: "animal_id", label: "Azonosító" },
+          { key: "farm", label: "Tenyészet" },
+          { key: "birth_year", label: "Szül. Év" },
+          { key: "ibc", label: "BTE" },
+        ];
+
+        tableEl.innerHTML = `<thead><tr><th><input type="checkbox" class="select-all"></th>${headers.map((h) => `<th data-sort-key="${h.key}">${h.label} <span class="sort-indicator"></span></th>`).join("")}</tr></thead><tbody>${animals
+          .map(
+            (animal) => `
                 <tr data-id="${animal.animal_id}">
                     <td><input type="checkbox" class="row-select"></td>
                     <td>${animal.animal_id}</td>
-                    <td>${animal.farm || 'Ismeretlen'}</td>
-                    <td>${animal.birth_year || 'Ismeretlen'}</td>
+                    <td>${animal.farm || "Ismeretlen"}</td>
+                    <td>${animal.birth_year || "Ismeretlen"}</td>
                     <td>${(animal.ibc || 0).toFixed(4)}</td>
-                </tr>`).join('')}</tbody>`;
+                </tr>`,
+          )
+          .join("")}</tbody>`;
 
-            const tbody = tableEl.querySelector('tbody');
-            if (!tbody) return;
-            tbody.lastSelectedRowIndex = -1;
+        const tbody = tableEl.querySelector("tbody");
+        if (!tbody) return;
+        tbody.lastSelectedRowIndex = -1;
 
-            tbody.addEventListener('mousedown', (e) => {
-                e.preventDefault(); 
-                const row = e.target.closest('tr');
-                if (!row) return;
+        tbody.addEventListener("mousedown", (e) => {
+          e.preventDefault();
+          const row = e.target.closest("tr");
+          if (!row) return;
 
-                const rowIndex = Array.from(tbody.children).indexOf(row);
-                const checkbox = row.querySelector('.row-select');
-                const allRows = Array.from(tbody.children);
+          const rowIndex = Array.from(tbody.children).indexOf(row);
+          const checkbox = row.querySelector(".row-select");
+          const allRows = Array.from(tbody.children);
 
-                if (e.shiftKey && tbody.lastSelectedRowIndex > -1) {
-                    const start = Math.min(rowIndex, tbody.lastSelectedRowIndex);
-                    const end = Math.max(rowIndex, tbody.lastSelectedRowIndex);
-                    allRows.forEach((r, i) => {
-                        const cb = r.querySelector('.row-select');
-                        if (i >= start && i <= end) {
-                            cb.checked = true;
-                            r.classList.add('selected-row');
-                        } else if (!e.ctrlKey) {
-                            cb.checked = false;
-                            r.classList.remove('selected-row');
-                        }
-                    });
-                } else if (e.ctrlKey) {
-                    checkbox.checked = !checkbox.checked;
-                    row.classList.toggle('selected-row', checkbox.checked);
-                } else {
-                    const isCurrentlySelected = checkbox.checked && row.classList.contains('selected-row');
-                    const isOnlyOneSelected = allRows.filter(r => r.querySelector('.row-select').checked).length === 1;
+          if (e.shiftKey && tbody.lastSelectedRowIndex > -1) {
+            const start = Math.min(rowIndex, tbody.lastSelectedRowIndex);
+            const end = Math.max(rowIndex, tbody.lastSelectedRowIndex);
+            allRows.forEach((r, i) => {
+              const cb = r.querySelector(".row-select");
+              if (i >= start && i <= end) {
+                cb.checked = true;
+                r.classList.add("selected-row");
+              } else if (!e.ctrlKey) {
+                cb.checked = false;
+                r.classList.remove("selected-row");
+              }
+            });
+          } else if (e.ctrlKey) {
+            checkbox.checked = !checkbox.checked;
+            row.classList.toggle("selected-row", checkbox.checked);
+          } else {
+            const isCurrentlySelected =
+              checkbox.checked && row.classList.contains("selected-row");
+            const isOnlyOneSelected =
+              allRows.filter((r) => r.querySelector(".row-select").checked)
+                .length === 1;
 
-                    allRows.forEach(r => {
-                        r.querySelector('.row-select').checked = false;
-                        r.classList.remove('selected-row');
-                    });
-                    
-                    if (!isCurrentlySelected || !isOnlyOneSelected) {
-                        checkbox.checked = true;
-                        row.classList.add('selected-row');
-                    }
-                }
-                tbody.lastSelectedRowIndex = rowIndex;
+            allRows.forEach((r) => {
+              r.querySelector(".row-select").checked = false;
+              r.classList.remove("selected-row");
             });
 
-            tableEl.querySelector('.select-all').addEventListener('click', (e) => {
-                const isChecked = e.target.checked;
-                tbody.querySelectorAll('tr').forEach(row => {
-                    row.querySelector('.row-select').checked = isChecked;
-                    row.classList.toggle('selected-row', isChecked);
-                });
-            });
+            if (!isCurrentlySelected || !isOnlyOneSelected) {
+              checkbox.checked = true;
+              row.classList.add("selected-row");
+            }
+          }
+          tbody.lastSelectedRowIndex = rowIndex;
+        });
 
-            tableEl.querySelectorAll('th[data-sort-key]').forEach(th => {
-                const key = th.dataset.sortKey;
-                if (tableEl.sortState.column === key) {
-                    th.classList.add(tableEl.sortState.direction === 'asc' ? 'sort-asc' : 'sort-desc');
-                }
+        tableEl.querySelector(".select-all").addEventListener("click", (e) => {
+          const isChecked = e.target.checked;
+          tbody.querySelectorAll("tr").forEach((row) => {
+            row.querySelector(".row-select").checked = isChecked;
+            row.classList.toggle("selected-row", isChecked);
+          });
+        });
 
-                th.addEventListener('click', () => {
-                    const currentDir = tableEl.sortState.direction;
-                    let newDir = 'asc';
-                    if (tableEl.sortState.column === key && currentDir === 'asc') {
-                        newDir = 'desc';
-                    }
-                    tableEl.sortState = { column: key, direction: newDir };
-                    renderGrids();
-                });
-            });
-        }
-        renderGrids();
+        tableEl.querySelectorAll("th[data-sort-key]").forEach((th) => {
+          const key = th.dataset.sortKey;
+          if (tableEl.sortState.column === key) {
+            th.classList.add(
+              tableEl.sortState.direction === "asc" ? "sort-asc" : "sort-desc",
+            );
+          }
+
+          th.addEventListener("click", () => {
+            const currentDir = tableEl.sortState.direction;
+            let newDir = "asc";
+            if (tableEl.sortState.column === key && currentDir === "asc") {
+              newDir = "desc";
+            }
+            tableEl.sortState = { column: key, direction: newDir };
+            renderGrids();
+          });
+        });
+      }
+      renderGrids();
     }
 
     function updateActionForms() {
-        const sireIds = selectedSires.map(a => a.animal_id).join(',');
-        const damIds = selectedDams.map(a => a.animal_id).join(',');
-        
-        document.getElementById('results_sire_ids').value = sireIds;
-        document.getElementById('results_dam_ids').value = damIds;
+      const sireIds = selectedSires.map((a) => a.animal_id).join(",");
+      const damIds = selectedDams.map((a) => a.animal_id).join(",");
+
+      document.getElementById("results_sire_ids").value = sireIds;
+      document.getElementById("results_dam_ids").value = damIds;
     }
 
+    // Handle form submission with streaming progress
+    document
+      .getElementById("results-form")
+      .addEventListener("submit", async (e) => {
+        e.preventDefault();
+
+        if (selectedSires.length === 0 || selectedDams.length === 0) {
+          alert("Kérjük válasszon legalább egy bikát és egy tehenet!");
+          return;
+        }
+
+        // Show progress modal
+        const progressModal = document.getElementById("progress-modal");
+        progressModal.style.display = "flex";
+        const totalPairs = selectedSires.length * selectedDams.length;
+        document.getElementById("progress-text-total").textContent =
+          totalPairs;
+
+        // Prepare data for streaming endpoint
+        const formData = new FormData();
+        formData.append("session_id", SESSION_ID);
+        formData.append(
+          "sire_ids",
+          selectedSires.map((a) => a.animal_id).join(","),
+        );
+        formData.append(
+          "dam_ids",
+          selectedDams.map((a) => a.animal_id).join(","),
+        );
+
+        try {
+          const response = await fetch("/pedigree/simulation_results_stream", {
+            method: "POST",
+            body: formData,
+          });
+
+          if (!response.ok) {
+            throw new Error(`Szerverhiba: ${response.statusText}`);
+          }
+
+          // Parse streaming response
+          const reader = response.body.getReader();
+          const decoder = new TextDecoder();
+          let buffer = "";
+
+          while (true) {
+            const { done, value } = await reader.read();
+            if (done) break;
+
+            buffer += decoder.decode(value, { stream: true });
+            const lines = buffer.split("\n");
+            buffer = lines.pop(); // Keep incomplete line
+
+            for (const line of lines) {
+              if (line.startsWith("data: ")) {
+                const data = line.slice(6);
+                const event = JSON.parse(data);
+
+                if (event.event === "complete") {
+                  // Store results and redirect
+                  sessionStorage.setItem(
+                    "simulation_results",
+                    JSON.stringify(event.data),
+                  );
+                  progressModal.style.display = "none";
+                  window.location.href = `/pedigree/simulation_results?session_id=${SESSION_ID}`;
+                } else {
+                  // Update progress
+                  const progress = Math.round(
+                    (event.current / event.total) * 100,
+                  );
+                  const progressBarFill =
+                    document.getElementById("progress-bar-fill");
+                  progressBarFill.style.width = progress + "%";
+                  progressBarFill.textContent = progress + "%";
+                  document.getElementById("progress-text-current").textContent =
+                    event.current;
+                }
+              }
+            }
+          }
+        } catch (error) {
+          console.error("Hiba a párosítási szimulációnál:", error);
+          alert(
+            "Hiba történt a párosítási szimulációnál. Kérjük, próbálja meg később.",
+          );
+          progressModal.style.display = "none";
+        }
+      });
+
     initialize();
-});
+  });
 </script>
 {% endblock %}

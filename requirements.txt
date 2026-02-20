@@ -2,3 +2,4 @@ flask
 dotenv
 pandas
 openpyxl
+gunicorn
