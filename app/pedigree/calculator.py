@@ -3,32 +3,46 @@ from .analysis import analyzer
 
 
 class PedigreeCalculator:
-    def __init__(self, df, progress_callback=None):
+    def __init__(self, df, progress_callback=None, core_animal_ids=None):
         """
         Initializes the calculator with a pedigree dataframe.
-        The Meuwissen-Luo inbreeding coefficients are pre-calculated for speed.
+        The Meuwissen-Luo inbreeding coefficients are pre-calculated only on demand for large files.
         A cache is prepared for the traditional path-based calculation.
 
         Args:
             df: Pedigree dataframe
             progress_callback: Optional callable(current, total) for progress updates during IBC pre-calculation
+            core_animal_ids: Optional list of core animal IDs to optimize Meuwissen calculation for
         """
         self.df = df.copy()
+        self.core_animal_ids = core_animal_ids
         # The animal_id, sire_id, and dam_id are now string-based composite keys.
         # The numeric conversion is no longer needed and was causing errors.
 
-        # Pre-calculate all Meuwissen-Luo IBCs for fast retrieval
-        self.F_meuwissen_cache = analyzer.calculate_inbreeding_tabular(
-            self.df, progress_callback=progress_callback)
+        # Store progress callback for lazy Meuwissen-Luo calculation
+        self.progress_callback = progress_callback
+
+        # Lazy initialization: Meuwissen-Luo cache is created on-demand only if needed
+        self.F_meuwissen_cache = None
+        self.meuwissen_initialized = False
 
         # Initialize a cache for the slower path-based results to avoid re-computation
         self.F_path_cache = {}
 
+    def _ensure_meuwissen_initialized(self):
+        """Ensure Meuwissen-Luo cache is initialized (lazy initialization)."""
+        if not self.meuwissen_initialized:
+            self.F_meuwissen_cache = analyzer.calculate_inbreeding_tabular(
+                self.df, progress_callback=self.progress_callback, core_animal_ids=self.core_animal_ids)
+            self.meuwissen_initialized = True
+
     def get_inbreeding_meuwissen(self, animal_id):
         """
         Retrieves the pre-calculated Meuwissen-Luo inbreeding coefficient for an animal.
+        Initializes the cache on first call if needed.
         """
         # The cache keys are now strings, so we ensure the input is a string.
+        self._ensure_meuwissen_initialized()
         return self.F_meuwissen_cache.get(str(animal_id), 0.0)
 
     def get_inbreeding_traditional(self, animal_id):

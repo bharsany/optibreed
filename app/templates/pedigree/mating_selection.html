@@ -184,11 +184,20 @@ endblock %} {% block content %}
 </style>
 
 <div class="container">
+  <div style="margin-bottom: 1rem">
+    <button
+      onclick="window.location.href='/?session_id={{ session_id }}'"
+      class="button"
+      style="background-color: #6c757d"
+    >
+      ← Vissza az adatrácshoz
+    </button>
+  </div>
   <h1>Párosítási kiválasztás</h1>
   <p>
-    Válassza ki a tenyészállatokat a szimulációhoz. Bal oldalon láthatók a farm
-    szerint szűrt, elérhető állatok. Jobb oldalon a párosításhoz kiválasztott
-    állatok listája.
+    Válassza ki a törzsállatokat a szimulációhoz. Bal oldalon láthatók a farm
+    szerint szűrt, elérhető törzsállatok. Jobb oldalon a párosításhoz
+    kiválasztott állatok listája.
   </p>
 
   <div class="mating-container">
@@ -294,7 +303,9 @@ endblock %} {% block content %}
     let allSires = [],
       allDams = [],
       selectedSires = [],
-      selectedDams = [];
+      selectedDams = [],
+      sireFarms = [],
+      damFarms = [];
 
     async function initialize() {
       const data = await fetchAnimals();
@@ -302,9 +313,11 @@ endblock %} {% block content %}
 
       allSires = data.sires;
       allDams = data.dams;
+      sireFarms = data.sire_farms || [];
+      damFarms = data.dam_farms || [];
 
-      setupSelector("dam", allDams, selectedDams);
-      setupSelector("sire", allSires, selectedSires);
+      setupSelector("dam", allDams, selectedDams, damFarms);
+      setupSelector("sire", allSires, selectedSires, sireFarms);
     }
 
     async function fetchAnimals() {
@@ -322,20 +335,28 @@ endblock %} {% block content %}
       }
     }
 
-    function setupSelector(type, allAnimals, selectedAnimals) {
+    function setupSelector(type, allAnimals, selectedAnimals, availableFarms) {
       const farmFilter = document.getElementById(`${type}-farm-filter`);
       const availableGrid = document.getElementById(`${type}-available-grid`);
       const selectedGrid = document.getElementById(`${type}-selected-grid`);
       const addBtn = document.getElementById(`add-${type}-btn`);
       const removeBtn = document.getElementById(`remove-${type}-btn`);
 
-      const farms = [
-        "Minden",
-        ...[...new Set(allAnimals.map((a) => a.farm || "Ismeretlen"))].sort(),
+      // Build farm options with counts
+      const totalCount = allAnimals.length;
+      const farmOptions = [
+        `<option value="Minden">Minden (${totalCount})</option>`,
       ];
-      farmFilter.innerHTML = farms
-        .map((f) => `<option value="${f}">${f}</option>`)
-        .join("");
+
+      availableFarms.forEach((farmData) => {
+        const farmName = farmData.farm || "Ismeretlen";
+        const count = farmData.count;
+        farmOptions.push(
+          `<option value="${farmName}">${farmName} (${count})</option>`,
+        );
+      });
+
+      farmFilter.innerHTML = farmOptions.join("");
 
       const renderGrids = () => {
         const selectedFarm = farmFilter.value;

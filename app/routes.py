@@ -8,12 +8,53 @@ from app.pedigree.calculator import PedigreeCalculator
 import logging
 from io import BytesIO
 import time
+import threading
+from app.pedigree.analysis import analyzer
 
 # Blueprints
 main_blueprint = Blueprint('main', __name__)
 
 # General app configuration
 logging.basicConfig(level=logging.INFO)
+
+
+def _resolve_default_ibc(calculator, animal_id, preferred_algorithm=None):
+    """
+    Resolve default IBC for an animal with priority:
+    - if both available, prefer Meuwissen-Luo
+    - otherwise use whichever is available
+
+    preferred_algorithm can be: 'both', 'meuwissen', 'traditional', or None.
+    """
+    animal_id = str(animal_id)
+
+    if preferred_algorithm == 'traditional':
+        try:
+            return calculator.get_inbreeding_traditional(animal_id)
+        except Exception:
+            pass
+        try:
+            return calculator.get_inbreeding_meuwissen(animal_id)
+        except Exception:
+            return 0.0
+
+    if preferred_algorithm in ('both', 'meuwissen', None):
+        try:
+            return calculator.get_inbreeding_meuwissen(animal_id)
+        except Exception:
+            pass
+        try:
+            return calculator.get_inbreeding_traditional(animal_id)
+        except Exception:
+            return 0.0
+
+    try:
+        return calculator.get_inbreeding_meuwissen(animal_id)
+    except Exception:
+        try:
+            return calculator.get_inbreeding_traditional(animal_id)
+        except Exception:
+            return 0.0
 
 # --- Main Blueprint Routes (Core App) ---
 
@@ -50,6 +91,7 @@ def upload_and_process_stream():
             # Convert bytes to StringIO for pandas
             df = pd.read_csv(StringIO(file_content.decode('utf-8')), dtype=str).rename(
                 columns=lambda x: x.strip().lower())
+            df = df.apply(lambda col: col.str.strip())
             yield f"event: progress\ndata: {json.dumps({'stage': 'CSV betöltés', 'progress': 25, 'rows': len(df)})}\n\n"
 
             # Step 2: Validate columns
@@ -85,11 +127,41 @@ def upload_and_process_stream():
                 'tenyeszet': 'farm'
             }, inplace=True)
 
+            # Normalize potential torzs column name variations and map boolean values
+            # Ensure lowercase column keys were used earlier, so check for these names
+            for col in ('torzsbak_e', 'torzskos_e', 'torzs_e'):
+                if col not in df.columns:
+                    df[col] = ''
+                else:
+                    df[col] = df[col].astype(str).str.strip().str.lower()
+
+            # "ïgen" or "igen" should be treated as True
+            def is_torzs_true(val):
+                try:
+                    return str(val).strip().lower() in ('ïgen', 'igen')
+                except Exception:
+                    return False
+
+            # torzshim indicates 'Törzshím' status derived from the
+            # specific pedigree columns torzsbak_e or torzskos_e.
+            # Do NOT use the general display/filter column `torzs_e`
+            # to determine torzshim — it may represent a different
+            # field in some CSVs.
+            df['torzshim'] = df.apply(lambda r: (
+                is_torzs_true(r.get('torzsbak_e')) or
+                is_torzs_true(r.get('torzskos_e'))
+            ), axis=1)
+
+            # Keep the original (normalized) torzs_e value for display and filtering
+            if 'torzs_e' not in df.columns:
+                df['torzs_e'] = ''
+
             final_df = df[[
                 'animal_id', 'sire_id', 'dam_id', 'gender', 'birth_year',
-                'species', 'breed', 'farm'
+                'species', 'breed', 'farm', 'torzs_e', 'torzshim'
             ]].copy()
 
+            # Always compute missing parents
             all_animal_ids = set(final_df['animal_id'].unique())
             all_parent_ids = set(final_df['sire_id'].dropna().unique()) | set(
                 final_df['dam_id'].dropna().unique())
@@ -100,65 +172,34 @@ def upload_and_process_stream():
             # Intermediate progress
             yield f"event: progress\ndata: {json.dumps({'stage': 'Adatok feldolgozása', 'progress': 45})}\n\n"
 
-            # Use threading to allow progress events to be yielded as they're generated
-            # during the calculator initialization (which is the slow step)
-            import threading
-            from queue import Queue
+            # Identify core animals for optimized Meuwissen calculation
+            core_animal_ids = None
+            if 'torzs_e' in final_df.columns:
+                core_animals_mask = final_df['torzs_e'].astype(
+                    str).str.strip().str.lower().isin(['igen', 'ïgen'])
+                core_animal_ids = final_df[core_animals_mask]['animal_id'].tolist(
+                )
+                if not core_animal_ids:
+                    core_animal_ids = None
 
-            progress_queue = Queue()
+            app.logger.info(
+                f"Upload: Found {len(core_animal_ids) if core_animal_ids else 0} core animals out of {len(final_df)}")
+
             session_id = str(uuid.uuid4())
             calculator = None
             calc_error = None
 
-            def create_calculator():
-                nonlocal calculator, calc_error
-                try:
-                    def stream_progress(current, total):
-                        percent = 50 + int((current / total) * 50)
-                        progress_queue.put(
-                            ('progress', current, total, percent))
-
-                    calculator = PedigreeCalculator(
-                        final_df.copy(), progress_callback=stream_progress)
-                    progress_queue.put(('done', None, None, None))
-                except Exception as e:
-                    calc_error = e
-                    progress_queue.put(('error', str(e), None, None))
-
-            # Start calculator init in background thread
-            calc_thread = threading.Thread(
-                target=create_calculator, daemon=True)
-            calc_thread.start()
-
-            # Yield progress events as they're generated
-            # Keep checking the queue and yielding events until we get 'done' or 'error'
-            while True:
-                try:
-                    event_type, *event_data = progress_queue.get(timeout=0.5)
-                    if event_type == 'progress':
-                        current, total, percent = event_data
-                        yield f"event: progress\ndata: {json.dumps({'stage': f'Szülők közötti kapcsolatok számítása ({current}/{total})', 'progress': percent})}\n\n"
-                    elif event_type == 'done':
-                        break
-                    elif event_type == 'error':
-                        raise Exception(event_data[0])
-                except:
-                    # Timeout - check if thread is still alive
-                    if not calc_thread.is_alive():
-                        # Thread finished, check for error
-                        if calc_error:
-                            raise calc_error
-                        break
-
-            # Wait for calculator thread to finish (should be quick now)
-            calc_thread.join(timeout=5)
-            if calc_error:
-                raise calc_error
+            # Always create calculator immediately - it's now fast since Meuwissen calculation is lazy
+            try:
+                calculator = PedigreeCalculator(
+                    final_df.copy(), core_animal_ids=core_animal_ids)
+            except Exception as e:
+                calc_error = e
 
             if not hasattr(app, 'sessions'):
                 app.sessions = {}
             app.sessions[session_id] = {
-                'data': final_df, 'calculator': calculator}
+                'data': final_df, 'calculator': calculator, 'missing_parents': missing_parents}
 
             end_time = time.time()
             load_time = round(end_time - start_time, 2)
@@ -166,7 +207,6 @@ def upload_and_process_stream():
 
             # Final result
             yield f"event: complete\ndata: {json.dumps({
-                'records': final_df.to_dict(orient='records'),
                 'animal_count': animal_count,
                 'load_time': load_time,
                 'missing_parents': missing_parents,
@@ -175,7 +215,8 @@ def upload_and_process_stream():
             })}\n\n"
 
         except Exception as e:
-            app.logger.error(f"File processing error: {e}", exc_info=True)
+            app.logger.error(
+                f"File processing error: {e}", exc_info=True)
             yield f"event: error\ndata: {json.dumps({'error': f'Hiba a fájl feldolgozása közben: {str(e)}'})}\n\n"
 
     return Response(generate_upload_stream(), mimetype='text/event-stream')
@@ -191,6 +232,7 @@ def upload_and_process():
     try:
         df = pd.read_csv(file, dtype=str).rename(
             columns=lambda x: x.strip().lower())
+        df = df.apply(lambda col: col.str.strip())
 
         expected_columns = {
             "faj", "fajta", "orszagkod", "fulszam", "szuletesi_ev", "ivar_kod",
@@ -217,9 +259,16 @@ def upload_and_process():
             'tenyeszet': 'farm'
         }, inplace=True)
 
+        # Handle torzs_e column if present
+        for col in ('torzsbak_e', 'torzskos_e', 'torzs_e'):
+            if col not in df.columns:
+                df[col] = ''
+            else:
+                df[col] = df[col].astype(str).str.strip().str.lower()
+
         final_df = df[[
             'animal_id', 'sire_id', 'dam_id', 'gender', 'birth_year',
-            'species', 'breed', 'farm'
+            'species', 'breed', 'farm', 'torzs_e'
         ]].copy()
 
         all_animal_ids = set(final_df['animal_id'].unique())
@@ -229,19 +278,28 @@ def upload_and_process():
 
         final_df = final_df.replace({np.nan: None})
 
+        # Identify core animals for optimized Meuwissen calculation
+        core_animal_ids = None
+        if 'torzs_e' in final_df.columns:
+            core_animals_mask = final_df['torzs_e'].astype(
+                str).str.strip().str.lower().isin(['igen', 'ïgen'])
+            core_animal_ids = final_df[core_animals_mask]['animal_id'].tolist()
+            if not core_animal_ids:
+                core_animal_ids = None
+
         session_id = str(uuid.uuid4())
-        calculator = PedigreeCalculator(final_df.copy())
+        calculator = PedigreeCalculator(
+            final_df.copy(), core_animal_ids=core_animal_ids)
         if not hasattr(current_app, 'sessions'):
             current_app.sessions = {}
         current_app.sessions[session_id] = {
-            'data': final_df, 'calculator': calculator}
+            'data': final_df, 'calculator': calculator, 'missing_parents': missing_parents}
 
         end_time = time.time()
         load_time = round(end_time - start_time, 2)
         animal_count = len(final_df)
 
         return jsonify({
-            'records': final_df.to_dict(orient='records'),
             'animal_count': animal_count,
             'load_time': load_time,
             'missing_parents': missing_parents,
@@ -267,18 +325,134 @@ def calculate_ibcs_route():
             start_time = time.time()
             try:
                 calculator = current_app.sessions[session_id]['calculator']
-                animal_ids = calculator.df['animal_id'].tolist()
+                current_app.sessions[session_id]['last_ibc_algorithm'] = algorithm
+                core_animal_ids = None  # Initialize outside the if block
+
+                if calculator is None:
+                    # Create calculator on-demand if not precomputed
+                    df_session = current_app.sessions[session_id]['data']
+
+                    # Extract core animals for optimized Meuwissen calculation
+                    core_animal_ids = None
+                    if 'torzs_e' in df_session.columns:
+                        core_animals_mask = df_session['torzs_e'].astype(
+                            str).str.strip().str.lower().isin(['igen', 'ïgen'])
+                        core_animal_ids = df_session[core_animals_mask]['animal_id'].tolist(
+                        )
+                        if not core_animal_ids:
+                            core_animal_ids = None
+
+                    calculator = PedigreeCalculator(
+                        df_session, core_animal_ids=core_animal_ids)
+                    current_app.sessions[session_id]['calculator'] = calculator
+                else:
+                    # If calculator already exists, get core_animal_ids from it
+                    core_animal_ids = calculator.core_animal_ids
+
+                df = calculator.df
+
+                # Build target list for IBC calculation:
+                # - if core animals exist: calculate for core animals + all their ancestors
+                # - otherwise: calculate for all animals
+                if 'torzs_e' in df.columns:
+                    core_animals = df[df['torzs_e'].astype(str).str.strip().str.lower().isin([
+                        'igen', 'ïgen'])]['animal_id'].tolist()
+                else:
+                    core_animals = []
+
+                if core_animals:
+                    relevant_animals = analyzer.find_all_ancestors(
+                        df[['animal_id', 'sire_id', 'dam_id']].copy(),
+                        core_animals,
+                    )
+                    # Keep dataframe order for deterministic UI updates
+                    animal_ids = [
+                        aid for aid in df['animal_id'].tolist() if aid in relevant_animals
+                    ]
+                else:
+                    animal_ids = df['animal_id'].tolist()
+
                 total_animals = len(animal_ids)
+
+                # Log optimization info
+                total_pedigree = len(df)
+                core_count = len(core_animals)
+                relevant_count = len(animal_ids)
+                current_app.logger.info(
+                    f"IBC Calculation: algorithm={algorithm}, core_animals={core_count}, relevant_animals={relevant_count}, total_pedigree={total_pedigree}, optimization_enabled={core_animal_ids is not None}")
+
+                # For Meuwissen-Luo, stream progress during lazy matrix initialization.
+                # Without this, the UI can remain on "Kapcsolódás..." for a long time.
+                if algorithm in ('meuwissen', 'both') and not calculator.meuwissen_initialized:
+                    ml_progress_state = {
+                        'current': 0,
+                        'total': 0,
+                        'done': False,
+                        'error': None,
+                    }
+
+                    def ml_progress_callback(current, total):
+                        ml_progress_state['current'] = int(current)
+                        ml_progress_state['total'] = int(total)
+
+                    def initialize_meuwissen_cache():
+                        try:
+                            calculator.progress_callback = ml_progress_callback
+                            calculator._ensure_meuwissen_initialized()
+                        except Exception as init_exc:
+                            ml_progress_state['error'] = init_exc
+                        finally:
+                            ml_progress_state['done'] = True
+
+                    init_thread = threading.Thread(
+                        target=initialize_meuwissen_cache,
+                        daemon=True,
+                    )
+                    init_thread.start()
+
+                    last_sent_progress = -1
+                    while not ml_progress_state['done']:
+                        total = ml_progress_state['total']
+                        current = ml_progress_state['current']
+                        progress = int((current / total) *
+                                       100) if total > 0 else 0
+
+                        if progress != last_sent_progress:
+                            yield f"data: {json.dumps({'animal_id': 'Meuwissen-Luo előkészítés', 'progress': progress})}\n\n"
+                            last_sent_progress = progress
+
+                        time.sleep(0.2)
+
+                    if ml_progress_state['error'] is not None:
+                        raise ml_progress_state['error']
+
+                    # Ensure progress reaches 100% for preparation phase
+                    yield f"data: {json.dumps({'animal_id': 'Meuwissen-Luo előkészítés', 'progress': 100})}\n\n"
+                    calculator.progress_callback = None
 
                 for i, animal_id in enumerate(animal_ids):
                     data = {'animal_id': animal_id}
+                    ibc_meuwissen_value = None
+                    ibc_traditional_value = None
 
                     if algorithm == 'meuwissen' or algorithm == 'both':
-                        data['ibc_meuwissen'] = calculator.get_inbreeding_meuwissen(
+                        ibc_meuwissen_value = calculator.get_inbreeding_meuwissen(
                             animal_id)
+                        data['ibc_meuwissen'] = ibc_meuwissen_value
                     if algorithm == 'traditional' or algorithm == 'both':
-                        data['ibc_traditional'] = calculator.get_inbreeding_traditional(
+                        ibc_traditional_value = calculator.get_inbreeding_traditional(
                             animal_id)
+                        data['ibc_traditional'] = ibc_traditional_value
+
+                    # Default IBC selection rule:
+                    # - if both are calculated, prefer Meuwissen-Luo
+                    # - otherwise use whichever is available
+                    if ibc_meuwissen_value is not None:
+                        data['ibc_default'] = ibc_meuwissen_value
+                    elif ibc_traditional_value is not None:
+                        data['ibc_default'] = ibc_traditional_value
+                    else:
+                        data['ibc_default'] = None
 
                     progress = int(((i + 1) / total_animals) * 100)
                     data['progress'] = progress
@@ -313,10 +487,12 @@ def get_animals(session_id):
 
     df = current_app.sessions[session_id]['data'].copy()
     calculator = current_app.sessions[session_id]['calculator']
+    preferred_algorithm = current_app.sessions[session_id].get(
+        'last_ibc_algorithm')
 
     # Safely get IBC values for each animal
     df['ibc'] = df['animal_id'].apply(
-        lambda id: calculator.get_inbreeding_meuwissen(id))
+        lambda id: _resolve_default_ibc(calculator, id, preferred_algorithm))
 
     # Standardize and fill missing values for farm and birth_year
     if 'farm' not in df.columns:
@@ -339,15 +515,59 @@ def get_animals(session_id):
 
     df['gender'] = df['gender'].astype(str).str.upper()
 
-    # Define columns to return
+    # Ensure torzshim flag exists (in case older sessions lack it)
+    if 'torzshim' not in df.columns:
+        for col in ('torzsbak_e', 'torzskos_e', 'torzs_e'):
+            if col in df.columns:
+                df[col] = df[col].astype(str).str.strip().str.lower()
+
+        def _is_torzs(v):
+            try:
+                return str(v).strip().lower() in ('ïgen', 'igen')
+            except Exception:
+                return False
+        # Only derive torzshim from the explicit torzsbak_e / torzskos_e
+        # columns. Keep `torzs_e` only for display/filtering purposes.
+        df['torzshim'] = df.apply(lambda r: (
+            _is_torzs(r.get('torzsbak_e')) or
+            _is_torzs(r.get('torzskos_e'))
+        ), axis=1)
+
+    # Ensure torzs_e column exists and is normalized for filtering/display
+    if 'torzs_e' not in df.columns:
+        df['torzs_e'] = ''
+    else:
+        df['torzs_e'] = df['torzs_e'].astype(str).str.strip().str.lower()
+
+    # Define columns to return (excluding torzs_e and torzshim)
     columns_to_return = ['animal_id', 'farm', 'birth_year', 'ibc']
 
-    # Separate sires and dams
-    sires = df[df['gender'] == 'M'][columns_to_return].to_dict(
-        orient='records')
-    dams = df[df['gender'] == 'F'][columns_to_return].to_dict(orient='records')
+    # Filter only core animals (torzs_e = 'igen' or 'ïgen') and separate by gender
+    def _is_torzs_core(v):
+        return str(v).strip().lower() in ('igen', 'ïgen')
 
-    return jsonify({'sires': sires, 'dams': dams})
+    core_animals = df[df['torzs_e'].apply(_is_torzs_core)]
+    sires = core_animals[core_animals['gender'] == 'M'][columns_to_return].to_dict(
+        orient='records')
+    dams = core_animals[core_animals['gender'] ==
+                        'F'][columns_to_return].to_dict(orient='records')
+
+    # Get unique farms for sires and dams with counts
+    from collections import Counter
+    sire_farm_counts = Counter([s['farm'] for s in sires])
+    dam_farm_counts = Counter([d['farm'] for d in dams])
+
+    sire_farms = [{'farm': farm, 'count': sire_farm_counts[farm]}
+                  for farm in sorted(sire_farm_counts.keys())]
+    dam_farms = [{'farm': farm, 'count': dam_farm_counts[farm]}
+                 for farm in sorted(dam_farm_counts.keys())]
+
+    return jsonify({
+        'sires': sires,
+        'dams': dams,
+        'sire_farms': sire_farms,
+        'dam_farms': dam_farms
+    })
 
 
 @main_blueprint.route('/pedigree/export_results', methods=['POST'])
@@ -418,6 +638,7 @@ def simulation_results_stream():
     df = current_app.sessions[session_id]['data'].copy()
     calculator = current_app.sessions[session_id]['calculator']
     sessions = current_app.sessions
+    preferred_algorithm = sessions[session_id].get('last_ibc_algorithm')
 
     df['farm'] = df['farm'].fillna('Ismeretlen')
     df['birth_year'] = df['birth_year'].fillna('Ismeretlen')
@@ -437,11 +658,11 @@ def simulation_results_stream():
             yield f"event: progress\ndata: {json.dumps({'current': 0, 'total': total_pairs, 'progress': 0})}\n\n"
 
             for sire in sire_details:
-                sire_ibc = calculator.get_inbreeding_meuwissen(
-                    sire['animal_id'])
+                sire_ibc = _resolve_default_ibc(
+                    calculator, sire['animal_id'], preferred_algorithm)
                 for dam in dam_details:
-                    dam_ibc = calculator.get_inbreeding_meuwissen(
-                        dam['animal_id'])
+                    dam_ibc = _resolve_default_ibc(
+                        calculator, dam['animal_id'], preferred_algorithm)
                     offspring_ibc = calculator.calculate_coancestry(
                         sire['animal_id'], dam['animal_id'])
                     results_data.append({
@@ -486,6 +707,8 @@ def simulation_results():
             # Fallback: compute results (for POST requests from non-streaming forms)
             df = current_app.sessions[session_id]['data'].copy()
             calculator = current_app.sessions[session_id]['calculator']
+            preferred_algorithm = current_app.sessions[session_id].get(
+                'last_ibc_algorithm')
 
             df['farm'] = df['farm'].fillna('Ismeretlen')
             df['birth_year'] = df['birth_year'].fillna('Ismeretlen')
@@ -501,11 +724,11 @@ def simulation_results():
 
             results_data = []
             for sire in sire_details:
-                sire_ibc = calculator.get_inbreeding_meuwissen(
-                    sire['animal_id'])
+                sire_ibc = _resolve_default_ibc(
+                    calculator, sire['animal_id'], preferred_algorithm)
                 for dam in dam_details:
-                    dam_ibc = calculator.get_inbreeding_meuwissen(
-                        dam['animal_id'])
+                    dam_ibc = _resolve_default_ibc(
+                        calculator, dam['animal_id'], preferred_algorithm)
                     offspring_ibc = calculator.calculate_coancestry(
                         sire['animal_id'], dam['animal_id'])
                     results_data.append({
@@ -526,3 +749,17 @@ def simulation_results():
         current_app.logger.error(
             f"Error in simulation results: {e}", exc_info=True)
         return "Hiba a szimulációs eredmények generálása során.", 500
+
+
+@main_blueprint.route('/get_data', methods=['GET'])
+def get_data():
+    session_id = request.args.get('session_id')
+    if not session_id or session_id not in current_app.sessions:
+        return jsonify({"error": "Invalid session"}), 400
+    session_data = current_app.sessions[session_id]
+    data_df = session_data['data']
+    missing_parents = session_data.get('missing_parents', [])
+    return jsonify({
+        'records': data_df.to_dict(orient='records'),
+        'missing_parents': missing_parents
+    })
