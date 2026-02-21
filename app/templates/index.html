@@ -707,6 +707,7 @@
       fetch(`/get_data?session_id=${currentSessionId}`)
         .then(async (response) => {
           console.log("Response status:", response.status);
+          console.log("Response ok:", response.ok);
           if (!response.ok) {
             const errorData = await response.json().catch(() => ({}));
             console.error("Error response:", errorData);
@@ -719,6 +720,10 @@
             "Data loaded successfully, records:",
             dataResponse.records?.length,
           );
+          console.log(
+            "Missing parents count:",
+            dataResponse.missing_parents?.length,
+          );
           data = dataResponse.records;
 
           // Restore missing parents information
@@ -728,14 +733,21 @@
             ),
           );
 
+          console.log("About to show grid controls...");
           // Show the grid and controls
-          document.getElementById("grid-container").style.display = "block";
-          document.getElementById("ibc-controls").style.display = "block";
-          document.getElementById("go-to-mating").style.display =
-            "inline-block";
+          const gridContainer = document.querySelector(".grid-container");
+          if (gridContainer) gridContainer.style.display = "block";
 
+          const ibcControls = document.getElementById("ibc-controls");
+          if (ibcControls) ibcControls.style.display = "block";
+
+          const matingButton = document.getElementById("go-to-mating");
+          if (matingButton) matingButton.style.display = "inline-block";
+
+          console.log("About to render grid...");
           // Render the grid
           renderGrid();
+          console.log("Grid rendered successfully!");
 
           // Clean URL (remove session_id parameter) without page reload
           window.history.replaceState(
@@ -746,6 +758,7 @@
         })
         .catch((error) => {
           console.error("Error restoring session:", error);
+          console.error("Error stack:", error.stack);
           alert(
             "A munkamenet lejárt vagy érvénytelen. Kérjük, töltsön fel újra egy fájlt.",
           );

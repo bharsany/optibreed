@@ -201,6 +201,10 @@ def upload_and_process_stream():
             app.sessions[session_id] = {
                 'data': final_df, 'calculator': calculator, 'missing_parents': missing_parents}
 
+            app.logger.info(
+                f"Session {session_id} stored. Total sessions: {len(app.sessions)}")
+            app.logger.info(f"Session keys: {list(app.sessions.keys())}")
+
             end_time = time.time()
             load_time = round(end_time - start_time, 2)
             animal_count = len(final_df)
@@ -475,7 +479,13 @@ def calculate_ibcs_route():
 @main_blueprint.route('/pedigree/mating_selection')
 def mating_selection():
     session_id = request.args.get('session_id')
+    current_app.logger.info(
+        f"mating_selection called with session_id: {session_id}")
+    current_app.logger.info(
+        f"Available sessions: {list(current_app.sessions.keys())}")
     if not session_id or session_id not in current_app.sessions:
+        current_app.logger.error(
+            f"Session {session_id} not found in mating_selection!")
         return "Hiba: Érvénytelen vagy lejárt munkamenet.", 400
     return render_template('pedigree/mating_selection.html', session_id=session_id)
 
@@ -754,7 +764,12 @@ def simulation_results():
 @main_blueprint.route('/get_data', methods=['GET'])
 def get_data():
     session_id = request.args.get('session_id')
+    current_app.logger.info(f"get_data called with session_id: {session_id}")
+    current_app.logger.info(
+        f"Available sessions: {list(current_app.sessions.keys())}")
+    current_app.logger.info(f"Total sessions: {len(current_app.sessions)}")
     if not session_id or session_id not in current_app.sessions:
+        current_app.logger.error(f"Session {session_id} not found!")
         return jsonify({"error": "Invalid session"}), 400
     session_data = current_app.sessions[session_id]
     data_df = session_data['data']

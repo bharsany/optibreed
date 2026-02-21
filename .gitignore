@@ -1,1 +1,13 @@
 __pycache__/
+*.pyc
+*.pyo
+*.pyd
+.Python
+venv/
+.env
+.vscode/
+.idx/
+*.csv
+tmp/
+*.tar
+optibreed.tar

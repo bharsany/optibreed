@@ -1,0 +1,11 @@
+services:
+  - type: web
+    name: optibreed
+    env: docker
+    plan: free  # Change to 'starter' or higher for production
+    healthCheckPath: /
+    envVars:
+      - key: SECRET_KEY
+        generateValue: true
+      - key: PYTHON_VERSION
+        value: 3.12
