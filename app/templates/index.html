@@ -423,19 +423,46 @@
                 progressContainer.style.display = "none";
                 // Fetch data separately
                 fetch(`/get_data?session_id=${currentSessionId}`)
-                  .then((response) => response.json())
+                  .then((response) => {
+                    if (!response.ok) {
+                      throw new Error(
+                        `HTTP ${response.status}: ${response.statusText}`,
+                      );
+                    }
+                    return response.json();
+                  })
                   .then((dataResponse) => {
+                    console.log(
+                      "Data loaded after CSV upload:",
+                      dataResponse.records?.length,
+                      "records",
+                    );
                     data = dataResponse.records;
+
+                    // Restore missing parents
+                    missingParents = new Set(
+                      (dataResponse.missing_parents || []).map((id) =>
+                        normalizeAnimalId(id),
+                      ),
+                    );
+                    console.log(
+                      "Missing parents restored:",
+                      missingParents.size,
+                    );
+
                     renderGrid();
                     gridContainer.style.display = "block";
+                    matingButton.style.display = "inline-block";
+                    matingButton.disabled = false;
                   })
                   .catch((error) => {
-                    console.error("Error fetching data:", error);
+                    console.error("Error fetching data after upload:", error);
+                    console.error("Session ID was:", currentSessionId);
                     // Show error
                     const errorContainer =
                       document.getElementById("error-container");
                     errorContainer.textContent =
-                      "Hiba az adatok betöltése során.";
+                      "Hiba az adatok betöltése során: " + error.message;
                     errorContainer.style.display = "block";
                   });
               } else if (eventType === "error") {

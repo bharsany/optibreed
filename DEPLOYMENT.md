@@ -1,6 +1,7 @@
 # Deploying Optibreed to Render.com
 
 ## Prerequisites
+
 - A GitHub, GitLab, or Bitbucket account
 - A Render.com account (free tier available)
 - Your Optibreed code in a Git repository
@@ -10,6 +11,7 @@
 ### 1. Prepare Your Repository
 
 Make sure your repository includes these files (already configured):
+
 - `Dockerfile` - Container configuration
 - `render.yaml` - Render.com service configuration
 - `requirements.txt` - Python dependencies
@@ -75,6 +77,7 @@ The service will automatically redeploy with the new environment variables.
 ### 5. Access Your Application
 
 Once deployed, Render will provide you with a URL like:
+
 ```
 https://optibreed.onrender.com
 ```
@@ -84,26 +87,33 @@ Your application will be live at this URL!
 ## Important Notes
 
 ### Free Tier Limitations
+
 - Apps on the free tier spin down after 15 minutes of inactivity
 - First request after inactivity will take 30-60 seconds to wake up
 - 750 hours/month usage limit (shared across all free services)
 
 ### Upgrade to Paid Plan
+
 For production use, consider upgrading to a paid plan:
+
 - **Starter ($7/month):** No spin-down, faster response times
 - **Standard ($25/month):** More resources, better performance
 
 ### Session Storage Warning
+
 ⚠️ **Important:** The current app uses in-memory session storage (`app.sessions = {}`). This means:
+
 - Sessions are lost when the app restarts or spins down
 - Users will lose their data if the app redeploys
 
 **For production, consider using:**
+
 - Redis for session storage
 - Amazon S3 or Cloud Storage for file uploads
 - PostgreSQL/MongoDB for data persistence
 
 ### Monitoring
+
 - Check logs: Render Dashboard → Your Service → Logs
 - Monitor performance: Render Dashboard → Your Service → Metrics
 - Set up alerts: Render Dashboard → Your Service → Settings → Notifications
@@ -122,25 +132,129 @@ Render will automatically detect the changes and redeploy your application.
 
 ## Troubleshooting
 
-### Build Fails
-- Check the build logs in Render dashboard
-- Ensure all dependencies are in `requirements.txt`
-- Verify Dockerfile syntax
+### Grid Not Displaying After CSV Load
 
-### App Crashes
-- Check runtime logs in Render dashboard
-- Ensure `SECRET_KEY` environment variable is set
-- Check for port binding issues (app should use PORT env variable)
+**Symptoms:** File uploads successfully but data grid doesn't appear
 
-### Slow Performance
-- Free tier has limited resources
-- Consider upgrading to Starter or Standard plan
-- Optimize large file processing
-- Add caching for frequently accessed data
+**Solutions:**
+
+1. **Check browser console (F12 → Console tab):**
+   - Look for JavaScript errors
+   - Check if "About to render grid..." message appears
+   - Look for fetch errors to `/get_data`
+
+2. **Session Issues:**
+   - Session might have expired (Render free tier spins down)
+   - Try uploading again
+   - This is normal on free tier - consider upgrading to Starter plan
+
+3. **Render Logs:**
+   - Go to Render Dashboard → Your Service → Logs
+   - Look for errors in app/request logs
+   - Check if session was properly created (`Session ... stored`)
+
+### Session Error When Navigating to Mating Selection
+
+**Symptoms:** "Hiba: Érvénytelen vagy lejárt munkamenet" (Session invalid or expired)
+
+**Causes:**
+
+1. **Free tier spin-down:** App went to sleep between navigation
+2. **Memory issue:** Large databases may cause issues
+3. **Race condition:** Session not fully created when accessing
+
+**Solutions:**
+
+1. **Immediate fix:**
+   - Reload the page
+   - Upload the file again
+   - Try the mating selection again
+
+2. **Permanent fix for production:**
+   - Upgrade from Free to **Starter** plan ($7/month)
+   - Starter plan doesn't spin down
+   - Better resources for large pedigrees
+
+3. **Check Render status:**
+   - Look at Render dashboard logs
+   - See if app shows "Restarting" or "Spinning down"
+
+### Status Codes and What They Mean
+
+- **200 OK:** Request successful
+- **404 Not Found:** Session not found - likely expired (free tier)
+- **500 Server Error:** Internal error - check logs
+- **502 Bad Gateway:** App crashed or restarting
+
+### Monitoring Your App
+
+**Check health:**
+
+```
+https://your-app.onrender.com/health
+```
+
+Should return: `{"status": "ok", "sessions": N}`
+
+**View logs:**
+
+1. Render Dashboard → Your Service → Logs
+2. Look for INFO messages about session creation
+3. Look for ERROR messages about missing sessions
+
+### Performance Issues on Free Tier
+
+**Expected behavior:**
+
+- First request: 30-60 seconds (spinning up)
+- Subsequent requests: Normal speed
+- After 15 minutes idle: Spins down again
+
+**Acceptable workarounds:**
+
+- Keep a tab open to prevent spin-down
+- Use Render's automated wake-up between uses
+- **Recommended:** Upgrade to Starter plan
+
+### Memory Issues with Large Pedigrees
+
+**Symptoms:**
+
+- Slow uploads
+- "Out of memory" errors
+- Session lost during calculation
+
+**Solutions:**
+
+1. Try with smaller CSV (~5,000 animals)
+2. Check Render dashboard for memory usage
+3. Consider upgrading plan for more resources
+4. For very large datasets (100K+ animals):
+   - May need Standard plan or dedicated resources
+   - Consider optimizing pedigree data structure
+
+### Database/Session Loss on Redeploy
+
+**Expected behavior:**
+
+- When you `git push`, Render automatically redeploys
+- All in-memory sessions are lost
+- Users must re-upload files
+
+**Warning:** This is a known limitation for free tier. For production:
+
+- Add Redis for session persistence
+- Add database backend
+- See "Session Storage Warning" section below
+
+## Session Storage Warning
+
+⚠️ **Important:** The current app uses in-memory session storage (`app.sessions = {}`). This means:
 
 ## Alternative Deployment Options
 
 If Render.com doesn't meet your needs, consider:
+
 - **Heroku** - Similar platform, easy deployment
 - **Railway** - Modern platform with free tier
 - **Google Cloud Run** - Pay-per-use, scales to zero
@@ -151,6 +265,7 @@ If Render.com doesn't meet your needs, consider:
 ## Support
 
 For Render.com specific issues, visit:
+
 - Documentation: https://render.com/docs
 - Community: https://community.render.com
 - Support: https://render.com/support

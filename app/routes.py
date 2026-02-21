@@ -64,6 +64,12 @@ def index():
     return render_template('index.html')
 
 
+@main_blueprint.route('/health', methods=['GET'])
+def health():
+    """Health check endpoint for Render.com"""
+    return jsonify({'status': 'ok', 'sessions': len(current_app.sessions)}), 200
+
+
 @main_blueprint.route('/upload_and_process_stream', methods=['POST'])
 def upload_and_process_stream():
     """
@@ -768,13 +774,34 @@ def get_data():
     current_app.logger.info(
         f"Available sessions: {list(current_app.sessions.keys())}")
     current_app.logger.info(f"Total sessions: {len(current_app.sessions)}")
-    if not session_id or session_id not in current_app.sessions:
-        current_app.logger.error(f"Session {session_id} not found!")
-        return jsonify({"error": "Invalid session"}), 400
-    session_data = current_app.sessions[session_id]
-    data_df = session_data['data']
-    missing_parents = session_data.get('missing_parents', [])
-    return jsonify({
-        'records': data_df.to_dict(orient='records'),
-        'missing_parents': missing_parents
-    })
+
+    if not session_id:
+        current_app.logger.error("No session_id provided!")
+        return jsonify({"error": "Missing session_id parameter"}), 400
+
+    if session_id not in current_app.sessions:
+        current_app.logger.error(
+            f"Session {session_id} not found in {len(current_app.sessions)} available sessions!")
+        # Try to provide helpful error info
+        return jsonify({
+            "error": f"Session not found (looking for: {session_id[:8]}...)",
+            "available_sessions_count": len(current_app.sessions)
+        }), 404
+
+    try:
+        session_data = current_app.sessions[session_id]
+        if 'data' not in session_data:
+            current_app.logger.error(
+                f"Session {session_id} exists but has no 'data' key!")
+            return jsonify({"error": "Session data corrupted"}), 500
+
+        data_df = session_data['data']
+        missing_parents = session_data.get('missing_parents', [])
+
+        return jsonify({
+            'records': data_df.to_dict(orient='records'),
+            'missing_parents': missing_parents
+        })
+    except Exception as e:
+        current_app.logger.error(f"Error in get_data: {e}", exc_info=True)
+        return jsonify({"error": f"Error retrieving data: {str(e)}"}), 500
