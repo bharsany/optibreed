@@ -1,0 +1,224 @@
+{% extends 'base.html' %}
+{% block title %}Fajok/Fajták szótár - OptiBreed{% endblock %}
+
+{% block content %}
+<style>
+    .back-btn {
+        text-decoration: none;
+        color: #333;
+        font-weight: bold;
+        display: inline-flex;
+        align-items: center;
+        gap: 0.5rem;
+        padding: 10px 15px;
+        background-color: #eee;
+        border-radius: var(--border-radius);
+        margin-bottom: 2rem;
+    }
+
+    .back-btn:hover {
+        background-color: #ddd;
+    }
+
+    .pagination-controls {
+        padding: 10px 0;
+        text-align: center;
+        margin-bottom: 1rem;
+    }
+
+    .pagination-controls select,
+    .pagination-controls button {
+        padding: 8px 12px;
+        border: 1px solid #ddd;
+        border-radius: var(--border-radius);
+        margin: 0 5px;
+        cursor: pointer;
+    }
+
+    #grid-header {
+        padding: 10px;
+        background-color: #f2f2f2;
+        font-weight: bold;
+        border-radius: var(--border-radius) var(--border-radius) 0 0;
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+    }
+
+    .search-controls {
+        display: inline-flex;
+        align-items: center;
+        gap: 0.5rem;
+    }
+
+    .search-controls input {
+        padding: 6px 10px;
+        border: 1px solid #ddd;
+        border-radius: var(--border-radius);
+    }
+</style>
+
+<a href="{{ url_for('main.index') }}" class="back-btn">
+    <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+        stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+        <path d="M19 12H5" />
+        <polyline points="12 19 5 12 12 5" />
+    </svg>
+    Vissza a főoldalra
+</a>
+
+<h1>Fajok és Fajták szótár</h1>
+
+<div class="grid-container" style="display: none;">
+    <div id="grid-header">
+        <div style="display: flex; gap: 1rem; align-items: center;">
+            <span id="load-info"></span>
+        </div>
+        <div class="search-controls">
+            <label for="search-query" style="font-weight: normal; font-size: 0.95rem;">Keresés:</label>
+            <input type="text" id="search-query" placeholder="Keresés fajta név alapján...">
+            <span id="search-status"></span>
+        </div>
+    </div>
+
+    <div class="pagination-controls">
+        <span>Oldalankénti sorok: </span>
+        <select id="rows-per-page">
+            <option value="25">25</option>
+            <option value="50" selected>50</option>
+            <option value="100">100</option>
+        </select>
+        <button id="prev-page">Előző</button>
+        <span id="page-info"></span>
+        <button id="next-page">Következő</button>
+    </div>
+
+    <table class="pedigree-table">
+        <thead>
+            <tr>
+                <th>Faj (FAJ)</th>
+                <th>Fajta Kód (FAJTA_KOD)</th>
+                <th>Fajta Név (FAJTA_NEV)</th>
+            </tr>
+        </thead>
+        <tbody id="grid-body"></tbody>
+    </table>
+</div>
+
+<script>
+    let data = [];
+    let currentPage = 1;
+    const rowsPerPage = document.getElementById("rows-per-page");
+
+    function escapeHtml(value) {
+        return String(value)
+            .replace(/&/g, "&amp;")
+            .replace(/</g, "&lt;")
+            .replace(/>/g, "&gt;")
+            .replace(/"/g, "&quot;")
+            .replace(/'/g, "&#39;");
+    }
+
+    function getCurrentSourceData() {
+        const searchQuery = document.getElementById("search-query");
+        const query = searchQuery ? searchQuery.value.trim().toLowerCase() : "";
+        if (!query) {
+            return data;
+        }
+        return data.filter((row) => {
+            const fajtaNev = row['FAJTA_NEV'] ? String(row['FAJTA_NEV']).toLowerCase() : '';
+            const fajtaKod = row['FAJTA_KOD'] ? String(row['FAJTA_KOD']).toLowerCase() : '';
+            return fajtaNev.includes(query) || fajtaKod.includes(query);
+        });
+    }
+
+    function updateSearchStatus() {
+        const statusEl = document.getElementById("search-status");
+        const searchQuery = document.getElementById("search-query");
+        if (!statusEl) return;
+        const query = searchQuery ? searchQuery.value.trim() : "";
+        const total = getCurrentSourceData().length;
+        statusEl.textContent = query ? `Találat: ${total}` : `Összes: ${total}`;
+    }
+
+    function renderGrid() {
+        const gridContainer = document.querySelector(".grid-container");
+        if (!Array.isArray(data) || data.length === 0) {
+            gridContainer.style.display = "none";
+            return;
+        }
+        gridContainer.style.display = "block";
+        const tableBody = document.getElementById("grid-body");
+        const pageInfo = document.getElementById("page-info");
+        tableBody.innerHTML = "";
+
+        const rows = parseInt(rowsPerPage.value, 10);
+        const sourceData = getCurrentSourceData();
+        const totalPages = Math.max(1, Math.ceil(sourceData.length / rows));
+
+        if (currentPage > totalPages) currentPage = totalPages;
+        if (currentPage < 1) currentPage = 1;
+
+        const start = (currentPage - 1) * rows;
+        const end = start + rows;
+        const paginatedData = sourceData.slice(start, end);
+
+        paginatedData.forEach((row) => {
+            const faj = escapeHtml(row['FAJ'] || '');
+            const fajtaKod = escapeHtml(row['FAJTA_KOD'] || '');
+            const fajtaNev = escapeHtml(row['FAJTA_NEV'] || '');
+
+            const rowHtml = `
+        <tr>
+          <td>${faj}</td>
+          <td>${fajtaKod}</td>
+          <td>${fajtaNev}</td>
+        </tr>`;
+            tableBody.innerHTML += rowHtml;
+        });
+
+        pageInfo.textContent = `Oldal ${currentPage} / ${totalPages}`;
+        updateSearchStatus();
+    }
+
+    document.addEventListener("DOMContentLoaded", () => {
+        fetch('/api/breeds')
+            .then(response => response.json())
+            .then(result => {
+                data = result.records || [];
+                document.getElementById('load-info').textContent = `Betöltve: ${data.length} sor`;
+                renderGrid();
+            })
+            .catch(error => console.error("Error loading breed data:", error));
+
+        rowsPerPage.addEventListener("change", () => {
+            currentPage = 1;
+            renderGrid();
+        });
+
+        const searchQuery = document.getElementById("search-query");
+        if (searchQuery) {
+            searchQuery.addEventListener("input", () => {
+                currentPage = 1;
+                renderGrid();
+            });
+        }
+
+        document.getElementById("prev-page").addEventListener("click", () => {
+            if (currentPage > 1) {
+                currentPage--;
+                renderGrid();
+            }
+        });
+
+        document.getElementById("next-page").addEventListener("click", () => {
+            const rows = parseInt(rowsPerPage.value, 10);
+            const totalPages = Math.max(1, Math.ceil(getCurrentSourceData().length / rows));
+            if (currentPage < totalPages) {
+                currentPage++;
+                renderGrid();
+            }
+        });
+    });
+</script>
+{% endblock %}

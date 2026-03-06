@@ -1,0 +1,490 @@
+{% extends 'base.html' %}
+
+{% block title %}Vezérlőpult - OptiBreed{% endblock %}
+
+{% block content %}
+<style>
+    .dashboard-container {
+        max-width: 900px;
+        margin: 0 auto;
+        padding: 2rem;
+    }
+
+    .dashboard-header {
+        text-align: center;
+        margin-bottom: 3rem;
+    }
+
+    .dataset-card {
+        background: #fff;
+        border: 1px solid #e0e0e0;
+        border-radius: var(--border-radius);
+        padding: 1.5rem;
+        margin-bottom: 1.5rem;
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        flex-wrap: wrap;
+        box-shadow: 0 2px 4px rgba(0, 0, 0, 0.05);
+    }
+
+    .dataset-info {
+        flex-grow: 1;
+    }
+
+    .dataset-title {
+        font-size: 1.25rem;
+        font-weight: bold;
+        margin-bottom: 0.5rem;
+        color: #333;
+    }
+
+    .dataset-desc {
+        color: #666;
+        font-size: 0.95rem;
+    }
+
+    .status-indicator {
+        display: flex;
+        align-items: center;
+        gap: 0.5rem;
+        font-weight: bold;
+        min-width: 140px;
+    }
+
+    .status-loaded {
+        color: #27ae60;
+    }
+
+    .status-missing {
+        color: #e74c3c;
+    }
+
+    .dataset-actions {
+        display: flex;
+        gap: 0.5rem;
+    }
+
+    .btn-upload {
+        cursor: pointer;
+    }
+
+    .btn-clear {
+        background-color: #e74c3c;
+    }
+
+    .btn-clear:hover {
+        background-color: #c0392b;
+    }
+
+    .alert-warning {
+        background-color: #fff3cd;
+        color: #856404;
+        border: 1px solid #ffeeba;
+        padding: 1rem;
+        border-radius: var(--border-radius);
+        margin-bottom: 2rem;
+        font-size: 0.95rem;
+    }
+
+    #progress-bar-container {
+        width: 100%;
+        background-color: #ddd;
+        border-radius: var(--border-radius);
+        overflow: hidden;
+    }
+
+    #progress-bar {
+        width: 0%;
+        height: 30px;
+        background-color: var(--primary-color);
+        text-align: center;
+        line-height: 30px;
+        color: white;
+        transition: width 0.5s ease;
+    }
+
+    #progress-container {
+        margin: 2rem 0;
+    }
+
+    #progress-status {
+        text-align: center;
+        margin-top: 0.5rem;
+        color: #333;
+    }
+
+    .error-container {
+        color: #d8000c;
+        background-color: #ffd2d2;
+        border: 1px solid #d8000c;
+        border-radius: var(--border-radius);
+        padding: 1rem;
+        margin-bottom: 1rem;
+        display: none;
+    }
+
+    /* Modal Styles */
+    .modal-overlay {
+        display: none;
+        position: fixed;
+        z-index: 1000;
+        left: 0;
+        top: 0;
+        width: 100%;
+        height: 100%;
+        background-color: rgba(0, 0, 0, 0.4);
+        backdrop-filter: blur(2px);
+    }
+
+    .modal {
+        position: relative;
+        background-color: #fefefe;
+        margin: 15% auto;
+        padding: 0;
+        border: 1px solid #888;
+        width: 400px;
+        max-width: 90%;
+        border-radius: var(--border-radius);
+        box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+        animation: modalFadeIn 0.2s ease-out;
+    }
+
+    @keyframes modalFadeIn {
+        from {
+            opacity: 0;
+            transform: translateY(-20px);
+        }
+
+        to {
+            opacity: 1;
+            transform: translateY(0);
+        }
+    }
+
+    .modal-header {
+        padding: 1rem 1.5rem;
+        background-color: #f8f9fa;
+        border-bottom: 1px solid #dee2e6;
+        border-radius: var(--border-radius) var(--border-radius) 0 0;
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+    }
+
+    .modal-header h3 {
+        margin: 0;
+        font-size: 1.25rem;
+        color: #d9534f;
+    }
+
+    .close-btn {
+        color: #aaa;
+        font-size: 24px;
+        font-weight: bold;
+        cursor: pointer;
+        line-height: 1;
+    }
+
+    .close-btn:hover {
+        color: #333;
+    }
+
+    .modal-body {
+        padding: 1.5rem;
+        color: #444;
+        line-height: 1.5;
+    }
+
+    .modal-warning-text {
+        margin-top: 10px;
+        font-weight: bold;
+        color: #c0392b;
+    }
+
+    .modal-footer {
+        padding: 1rem 1.5rem;
+        border-top: 1px solid #dee2e6;
+        display: flex;
+        justify-content: flex-end;
+        gap: 0.5rem;
+        background-color: #f8f9fa;
+        border-radius: 0 0 var(--border-radius) var(--border-radius);
+    }
+
+    .btn-cancel {
+        background-color: #6c757d;
+        color: white;
+    }
+
+    .btn-cancel:hover {
+        background-color: #5a6268;
+    }
+</style>
+
+<div class="dashboard-container">
+    <div class="dashboard-header">
+        <h1>Adatkészletek kezelése</h1>
+        <p>Töltse fel a szótárakat és a pedigré adatbázist a párosítási alternatívák kalkulációjához.</p>
+    </div>
+
+    <div class="alert-warning">
+        <strong>Fontos:</strong> A pedigré adatbázis feltöltése előtt a <b>Fajok/Fajták</b> és a <b>Tenyészetek</b>
+        szótárának már feltöltött állapotban kell lennie.
+    </div>
+
+    <!-- FAJ / FAJTA (BREED) Dictionary -->
+    <div class="dataset-card">
+        <div class="dataset-info">
+            <div class="dataset-title">Fajok / Fajták szótár</div>
+            <div class="dataset-desc">Azonosítók és megnevezések a fajokhoz és fajtákhoz.</div>
+        </div>
+        <div class="status-indicator {{ 'status-loaded' if status.breed_loaded else 'status-missing' }}">
+            {% if status.breed_loaded %}
+            ✅ Betöltve
+            {% else %}
+            ❌ Hiányzik
+            {% endif %}
+        </div>
+        <div class="dataset-actions">
+            {% if not status.breed_loaded %}
+            <form action="{{ url_for('main.upload_breed') }}" method="post" enctype="multipart/form-data"
+                style="display:inline;">
+                <input type="file" name="breed_file" id="breed_file" accept=".csv" style="display:none;"
+                    onchange="this.form.submit()">
+                <label for="breed_file" class="button btn-upload">Feltöltés</label>
+            </form>
+            {% else %}
+            <a href="{{ url_for('main.view_breeds') }}" class="button">Megtekintés</a>
+            <form action="{{ url_for('main.clear_breed') }}" method="post" id="form-clear-breed"
+                style="display:inline;">
+                <button type="button" class="button btn-clear"
+                    onclick="showConfirmModal('form-clear-breed', 'fajta szótárat', {{ status.pedigree_loaded | tojson }})">Törlés</button>
+            </form>
+            {% endif %}
+        </div>
+    </div>
+
+    <!-- TENYÉSZET (FARM) Dictionary -->
+    <div class="dataset-card">
+        <div class="dataset-info">
+            <div class="dataset-title">Tenyészetek szótár</div>
+            <div class="dataset-desc">Tenyészetek, kódok és helységek jegyzéke.</div>
+        </div>
+        <div class="status-indicator {{ 'status-loaded' if status.farm_loaded else 'status-missing' }}">
+            {% if status.farm_loaded %}
+            ✅ Betöltve
+            {% else %}
+            ❌ Hiányzik
+            {% endif %}
+        </div>
+        <div class="dataset-actions">
+            {% if not status.farm_loaded %}
+            <form action="{{ url_for('main.upload_farm') }}" method="post" enctype="multipart/form-data"
+                style="display:inline;">
+                <input type="file" name="farm_file" id="farm_file" accept=".csv" style="display:none;"
+                    onchange="this.form.submit()">
+                <label for="farm_file" class="button btn-upload">Feltöltés</label>
+            </form>
+            {% else %}
+            <a href="{{ url_for('main.view_farms') }}" class="button">Megtekintés</a>
+            <form action="{{ url_for('main.clear_farm') }}" method="post" id="form-clear-farm" style="display:inline;">
+                <button type="button" class="button btn-clear"
+                    onclick="showConfirmModal('form-clear-farm', 'tenyészet szótárat', {{ status.pedigree_loaded | tojson }})">Törlés</button>
+            </form>
+            {% endif %}
+        </div>
+    </div>
+
+    <!-- PEDIGREE -->
+    <div class="dataset-card">
+        <div class="dataset-info">
+            <div class="dataset-title">Pedigré adatbázis</div>
+            <div class="dataset-desc">Az egyedek és leszármazási adataik.</div>
+        </div>
+        <div class="status-indicator {{ 'status-loaded' if status.pedigree_loaded else 'status-missing' }}">
+            {% if status.pedigree_loaded %}
+            ✅ Betöltve
+            {% else %}
+            ❌ Hiányzik
+            {% endif %}
+        </div>
+        <div class="dataset-actions">
+            {% if status.pedigree_loaded %}
+            <a href="{{ url_for('main.view_pedigree') }}" class="button">Megtekintés</a>
+            <form action="{{ url_for('main.clear_pedigree') }}" method="post" id="form-clear-pedigree"
+                style="display:inline;">
+                <button type="button" class="button btn-clear"
+                    onclick="showConfirmModal('form-clear-pedigree', 'pedigré adatbázist', false)">Törlés</button>
+            </form>
+            {% else %}
+            {% if status.breed_loaded and status.farm_loaded %}
+            <form id="upload-form-pedigree" method="post" enctype="multipart/form-data" style="display:inline;"
+                action="{{ url_for('main.upload_and_process_stream') }}">
+                <input type="file" name="pedigree_file" id="pedigree_file" accept=".csv" style="display:none;"
+                    onchange="submitPedigreeUpload()">
+                <label for="pedigree_file" class="button btn-upload">Feltöltés</label>
+            </form>
+            {% else %}
+            <button class="button" disabled title="Előbb töltse fel a szótárakat!"
+                style="opacity:0.5; cursor:not-allowed;">Feltöltés</button>
+            {% endif %}
+            {% endif %}
+        </div>
+        <!-- Progress bar inside the pedigree card -->
+        <div id="progress-container" style="display: none; width: 100%; margin-top: 1rem;">
+            <div class="error-container" id="error-container"></div>
+            <div id="progress-bar-container">
+                <div id="progress-bar">0%</div>
+            </div>
+            <div id="progress-status">Pedigré feltöltése...</div>
+        </div>
+    </div>
+
+</div>
+
+<!-- Confirmation Modal -->
+<div id="confirm-modal" class="modal-overlay">
+    <div class="modal">
+        <div class="modal-header">
+            <h3>Törlés megerősítése</h3>
+            <span class="close-btn" onclick="closeConfirmModal()">&times;</span>
+        </div>
+        <div class="modal-body">
+            <p id="modal-primary-text">Biztosan törli a(z) <strong id="modal-target-name"></strong>?</p>
+            <p id="modal-warning-text" class="modal-warning-text" style="display: none;">
+                ⚠️ Figyelem: Ezzel a pedigré adatok is automatikusan törlődnek!
+            </p>
+        </div>
+        <div class="modal-footer">
+            <button class="button btn-cancel" onclick="closeConfirmModal()">Mégse</button>
+            <button class="button btn-clear" id="modal-confirm-btn">Igen, törlés</button>
+        </div>
+    </div>
+</div>
+
+<script>
+    let formToSubmitId = null;
+
+    function showConfirmModal(formId, targetName, hasPedigreeWarning) {
+        formToSubmitId = formId;
+
+        document.getElementById('modal-target-name').textContent = targetName;
+
+        const warningEl = document.getElementById('modal-warning-text');
+        if (hasPedigreeWarning) {
+            warningEl.style.display = 'block';
+        } else {
+            warningEl.style.display = 'none';
+        }
+
+        document.getElementById('confirm-modal').style.display = 'block';
+    }
+
+    function closeConfirmModal() {
+        document.getElementById('confirm-modal').style.display = 'none';
+        formToSubmitId = null;
+    }
+
+    document.getElementById('modal-confirm-btn').addEventListener('click', function () {
+        if (formToSubmitId) {
+            document.getElementById(formToSubmitId).submit();
+        }
+    });
+
+    // Close modal if clicking outside
+    window.onclick = function (event) {
+        const modal = document.getElementById('confirm-modal');
+        if (event.target == modal) {
+            closeConfirmModal();
+        }
+    }
+
+    async function submitPedigreeUpload() {
+        const input = document.getElementById('pedigree_file');
+        if (!input || !input.files.length) return;
+
+        const form = document.getElementById('upload-form-pedigree');
+        const formData = new FormData(form);
+        const errorContainer = document.getElementById("error-container");
+        const progressContainer = document.getElementById("progress-container");
+        const progressBar = document.getElementById("progress-bar");
+        const progressStatus = document.getElementById("progress-status");
+
+        errorContainer.style.display = "none";
+        errorContainer.textContent = "";
+        progressContainer.style.display = "block";
+        progressBar.style.width = "0%";
+        progressBar.textContent = "0%";
+        progressStatus.textContent = "Fájl feltöltése...";
+
+        try {
+            const response = await fetch(form.action, {
+                method: "POST",
+                body: formData,
+            });
+            if (!response.ok) {
+                throw new Error(`HTTP error! Status: ${response.status}`);
+            }
+
+            const reader = response.body.getReader();
+            const decoder = new TextDecoder();
+            let buffer = "";
+
+            while (true) {
+                const { done, value } = await reader.read();
+                if (done) break;
+
+                buffer += decoder.decode(value, { stream: true });
+                const lines = buffer.split("\n\n");
+                buffer = lines.pop();
+
+                for (const line of lines) {
+                    if (!line.trim()) continue;
+                    const parts = line.split("\n");
+                    let eventType = "message";
+                    let eventData = null;
+
+                    for (const part of parts) {
+                        if (part.startsWith("event: ")) {
+                            eventType = part.substring(7);
+                        } else if (part.startsWith("data: ")) {
+                            try {
+                                eventData = JSON.parse(part.substring(6));
+                            } catch (e) {
+                                console.error("Failed to parse event data:", part, e);
+                            }
+                        }
+                    }
+
+                    if (eventData) {
+                        if (eventType === "progress") {
+                            const percent = eventData.progress || 0;
+                            progressBar.style.width = percent + "%";
+                            progressBar.textContent = percent + "%";
+                            const stage = eventData.stage || "Feldolgozás";
+                            const detail = eventData.total_animals
+                                ? ` (${eventData.total_animals} egyed)`
+                                : "";
+                            progressStatus.textContent = `${stage}${detail}`;
+                        } else if (eventType === "complete") {
+                            // On successful upload, go to the view screen.
+                            window.location.href = "{{ url_for('main.view_pedigree') }}";
+                        } else if (eventType === "error") {
+                            throw new Error(
+                                eventData.error || "Ismeretlen hiba a feltöltés során"
+                            );
+                        }
+                    }
+                }
+            }
+        } catch (error) {
+            errorContainer.textContent = error.message;
+            errorContainer.style.display = "block";
+            // Allow re-upload attempt
+            input.value = "";
+        }
+    }
+</script>
+
+{% endblock %}

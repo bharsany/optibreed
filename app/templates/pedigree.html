@@ -1,48 +1,12 @@
 {% extends 'base.html' %} {% block title %}Fájl feltöltés - OptiBreed{% endblock
 %} {% block content %}
 <style>
-  .upload-box {
-    text-align: center;
-    padding: 2rem;
-    border: 2px dashed #ccc;
-    border-radius: var(--border-radius);
-    background-color: #fafafa;
-    margin-bottom: 2rem;
-  }
-  .upload-box h1 {
-    margin-top: 0;
-  }
-  .upload-box p {
-    margin-bottom: 1.5rem;
-    color: #666;
-  }
-  .upload-box input[type=\"file\"] {
-    display: none;
-  }
-  .file-label {
-    display: inline-flex;
-    align-items: center;
-    gap: 0.5rem;
-    padding: 12px 20px;
-    background-color: var(--secondary-color);
-    color: white;
-    border-radius: var(--border-radius);
-    cursor: pointer;
-    font-weight: bold;
-  }
-  .file-label:hover {
-    background-color: var(--primary-color);
-  }
-  #file-name {
-    margin-top: 1rem;
-    font-style: italic;
-    color: #555;
-  }
   .pagination-controls {
     padding: 10px 0;
     text-align: center;
     margin-bottom: 1rem;
   }
+
   .pagination-controls select,
   .pagination-controls button {
     padding: 8px 12px;
@@ -51,12 +15,14 @@
     margin: 0 5px;
     cursor: pointer;
   }
+
   #progress-bar-container {
     width: 100%;
     background-color: #ddd;
     border-radius: var(--border-radius);
     overflow: hidden;
   }
+
   #progress-bar {
     width: 0%;
     height: 30px;
@@ -66,23 +32,18 @@
     color: white;
     transition: width 0.5s ease;
   }
+
   #progress-container {
     margin: 2rem 0;
   }
+
   #progress-status {
     text-align: center;
     margin-top: 0.5rem;
     color: #333;
   }
-  .error-container {
-    color: #d8000c;
-    background-color: #ffd2d2;
-    border: 1px solid #d8000c;
-    border-radius: var(--border-radius);
-    padding: 1rem;
-    margin-bottom: 1rem;
-    display: none;
-  }
+
+
   #grid-header {
     padding: 10px;
     background-color: #f2f2f2;
@@ -91,6 +52,7 @@
     display: flex;
     justify-content: space-between;
   }
+
   #algorithm-select {
     padding: 8px 12px;
     border: 1px solid #ddd;
@@ -98,39 +60,46 @@
     background-color: white;
     cursor: pointer;
   }
+
   .button {
     display: inline-flex;
     align-items: center;
     gap: 0.5rem;
   }
+
   .missing-parent {
     color: #e74c3c;
     font-style: italic;
     font-weight: bold;
   }
+
   .parent-link {
     color: inherit;
     text-decoration: underline;
     cursor: pointer;
   }
+
   .search-controls {
     display: inline-flex;
     align-items: center;
     gap: 0.5rem;
     flex-wrap: wrap;
   }
+
   .search-controls select,
   .search-controls input {
     padding: 6px 10px;
     border: 1px solid #ddd;
     border-radius: var(--border-radius);
   }
+
   #search-status {
     font-size: 0.9rem;
     color: #555;
     min-width: 120px;
     text-align: right;
   }
+
   .row-highlight {
     background-color: rgba(0, 90, 156, 0.12) !important;
     outline: 2px solid var(--primary-color);
@@ -138,101 +107,53 @@
       background-color 0.8s ease,
       outline-color 0.8s ease;
   }
+
   .row-highlight td {
     background-color: rgba(0, 90, 156, 0.12) !important;
   }
+
+  .back-btn {
+    text-decoration: none;
+    color: #333;
+    font-weight: bold;
+    display: inline-flex;
+    align-items: center;
+    gap: 0.5rem;
+    padding: 10px 15px;
+    background-color: #eee;
+    border-radius: var(--border-radius);
+    margin-bottom: 2rem;
+  }
+
+  .back-btn:hover {
+    background-color: #ddd;
+  }
 </style>
 
-<div class="upload-box">
-  <h1>Pedigré fájl feltöltése</h1>
-  <p>Kérjük, válasszon ki egy CSV formátumú pedigré fájlt a feltöltéshez.</p>
+<a href="{{ url_for('main.index') }}" class="back-btn">
+  <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+    stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+    <path d="M19 12H5" />
+    <polyline points="12 19 5 12 12 5" />
+  </svg>
+  Vissza a főoldalra
+</a>
 
-  <div class="error-container" id="error-container"></div>
 
-  <form
-    id="upload-form"
-    method="post"
-    enctype="multipart/form-data"
-    action="{{ url_for('main.upload_and_process_stream') }}"
-  >
-    <label for="pedigree_file" class="file-label">
-      <svg
-        xmlns="http://www.w3.org/2000/svg"
-        width="20"
-        height="20"
-        viewBox="0 0 24 24"
-        fill="none"
-        stroke="currentColor"
-        stroke-width="2"
-        stroke-linecap="round"
-        stroke-linejoin="round"
-      >
-        <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z" />
-        <polyline points="14 2 14 8 20 8" />
-        <line x1="16" y1="13" x2="8" y2="13" />
-        <line x1="16" y1="17" x2="8" y2="17" />
-        <polyline points="10 9 9 9 8 9" />
-      </svg>
-      Fájl kiválasztása
-    </label>
-    <input
-      type="file"
-      id="pedigree_file"
-      name="pedigree_file"
-      onchange="updateFileName()"
-      required
-      style="display: none"
-    />
-    <p id="file-name">Nincs fájl kiválasztva.</p>
-    <button type="submit" class="button">
-      <svg
-        xmlns="http://www.w3.org/2000/svg"
-        width="20"
-        height="20"
-        viewBox="0 0 24 24"
-        fill="none"
-        stroke="currentColor"
-        stroke-width="2"
-        stroke-linecap="round"
-        stroke-linejoin="round"
-      >
-        <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4" />
-        <polyline points="17 8 12 3 7 8" />
-        <line x1="12" y1="3" x2="12" y2="15" />
-      </svg>
-      Adatok feltöltése
-    </button>
-  </form>
-</div>
 
-<div
-  id="ibc-controls"
-  style="margin-bottom: 2rem; display: none; align-items: center; gap: 1rem"
->
-  <label for="algorithm-select" style="font-weight: bold"
-    >Válasszon algoritmust:</label
-  >
+<div id="ibc-controls" style="margin-bottom: 2rem; display: none; align-items: center; gap: 1rem">
+  <label for="algorithm-select" style="font-weight: bold">Válasszon algoritmust:</label>
   <select id="algorithm-select">
     <option value="both">Hagyományos és Meuwissen-Luo</option>
     <option value="traditional">Hagyományos</option>
     <option value="meuwissen">Meuwissen-Luo</option>
   </select>
   <button id="calculate-ibc" class="button">
-    <svg
-      xmlns="http://www.w3.org/2000/svg"
-      width="20"
-      height="20"
-      viewBox="0 0 24 24"
-      fill="none"
-      stroke="currentColor"
-      stroke-width="2"
-      stroke-linecap="round"
-      stroke-linejoin="round"
-    >
+    <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+      stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
       <rect x="2" y="2" width="20" height="20" rx="2" ry="2" />
       <path
-        d="M9 7H7v2h2V7zm4 0h-2v2h2V7zm4 0h-2v2h2V7zm-8 4H7v2h2v-2zm4 0h-2v2h2v-2zm4 0h-2v2h2v-2zm-8 4H7v2h2v-2zm4 0h-2v2h2v-2zm4 0h-2v2h2v-2z"
-      />
+        d="M9 7H7v2h2V7zm4 0h-2v2h2V7zm4 0h-2v2h2V7zm-8 4H7v2h2v-2zm4 0h-2v2h2v-2zm4 0h-2v2h2v-2zm-8 4H7v2h2v-2zm4 0h-2v2h2v-2zm4 0h-2v2h2v-2z" />
     </svg>
     Beltenyésztettség számítása
   </button>
@@ -256,27 +177,20 @@
     </div>
     <div style="display: flex; gap: 1rem; align-items: center; flex-wrap: wrap">
       <div class="search-controls">
-        <label
-          for="search-field"
-          style="font-weight: normal; font-size: 0.95rem"
-          >Keresés:</label
-        >
+        <label for="search-field" style="font-weight: normal; font-size: 0.95rem">Keresés:</label>
         <select id="search-field">
           <option value="animal_id">Egyed azonosító</option>
           <option value="dam_id">Anya azonosító</option>
           <option value="sire_id">Apa azonosító</option>
-          <option value="farm">Tenyészet</option>
+          <option value="FAJTA_NEV">Fajta</option>
+          <option value="TENYNEV">Tenyészet</option>
+          <option value="HELYSEG">Helység</option>
         </select>
-        <input
-          type="text"
-          id="search-query"
-          placeholder="Részszöveg keresése"
-        />
+        <input type="text" id="search-query" placeholder="Részszöveg keresése" />
         <span id="search-status"></span>
       </div>
-      <label style="font-weight: normal; font-size: 0.95rem"
-        ><input type="checkbox" id="filter-torzs" /> Csak Törzs</label
-      >
+      <label style="font-weight: normal; font-size: 0.95rem"><input type="checkbox" id="filter-torzs" /> Csak
+        Törzs</label>
     </div>
   </div>
   <div class="pagination-controls">
@@ -298,189 +212,14 @@
 
 <script>
   let data = [];
-  let currentSessionId = null;
+  let currentSessionId = "{{ session_id|default('') }}";
   let missingParents = new Set();
-
-  function updateFileName() {
-    const input = document.getElementById("pedigree_file");
-    const fileNameDisplay = document.getElementById("file-name");
-    fileNameDisplay.textContent =
-      input.files.length > 0
-        ? `Kiválasztott fájl: ${input.files[0].name}`
-        : "Nincs fájl kiválasztva.";
-  }
 
   document
     .getElementById("go-to-mating")
     .addEventListener("click", async () => {
-      if (currentSessionId) {
+      if (currentSessionId && currentSessionId !== "None" && currentSessionId !== "") {
         window.location.href = `/pedigree/mating_selection?session_id=${currentSessionId}`;
-      }
-    });
-
-  document
-    .getElementById("upload-form")
-    .addEventListener("submit", async (event) => {
-      event.preventDefault();
-      const form = event.target;
-      const formData = new FormData(form);
-      const errorContainer = document.getElementById("error-container");
-      const ibcControls = document.getElementById("ibc-controls");
-      const matingButton = document.getElementById("go-to-mating");
-      const loadInfo = document.getElementById("load-info");
-      const calcInfo = document.getElementById("calc-info");
-      const progressContainer = document.getElementById("progress-container");
-      const progressBar = document.getElementById("progress-bar");
-      const progressStatus = document.getElementById("progress-status");
-
-      errorContainer.style.display = "none";
-      errorContainer.textContent = "";
-      ibcControls.style.display = "none";
-      progressContainer.style.display = "block";
-      progressBar.style.width = "0%";
-      progressBar.textContent = "0%";
-      progressStatus.textContent = "Fájl feltöltése...";
-
-      // Hide grid immediately when upload starts
-      const gridContainer = document.querySelector(".grid-container");
-      gridContainer.style.display = "none";
-
-      try {
-        const response = await fetch(form.action, {
-          method: "POST",
-          body: formData,
-        });
-        if (!response.ok) {
-          throw new Error(`HTTP error! Status: ${response.status}`);
-        }
-
-        const reader = response.body.getReader();
-        const decoder = new TextDecoder();
-        let buffer = "";
-
-        while (true) {
-          const { done, value } = await reader.read();
-          if (done) break;
-
-          buffer += decoder.decode(value, { stream: true });
-          const lines = buffer.split("\n\n");
-          buffer = lines.pop();
-
-          for (const line of lines) {
-            if (!line.trim()) continue;
-            const parts = line.split("\n");
-            let eventType = "message";
-            let eventData = null;
-
-            for (const part of parts) {
-              if (part.startsWith("event: ")) {
-                eventType = part.substring(7);
-              } else if (part.startsWith("data: ")) {
-                try {
-                  eventData = JSON.parse(part.substring(6));
-                } catch (e) {
-                  console.error("Failed to parse event data:", part, e);
-                }
-              }
-            }
-
-            if (eventData) {
-              if (eventType === "progress") {
-                const percent = eventData.progress || 0;
-                progressBar.style.width = percent + "%";
-                progressBar.textContent = percent + "%";
-                const stage = eventData.stage || "Feldolgozás";
-                const detail = eventData.total_animals
-                  ? ` (${eventData.total_animals} egyед)`
-                  : "";
-                progressStatus.textContent = `${stage}${detail}`;
-              } else if (eventType === "complete") {
-                currentSessionId = eventData.session_id;
-                missingParents = new Set(
-                  (eventData.missing_parents || []).map((id) =>
-                    normalizeAnimalId(id),
-                  ),
-                );
-                headers = [
-                  "animal_id",
-                  "dam_id",
-                  "sire_id",
-                  "farm",
-                  "birth_year",
-                  "gender",
-                  "torzs_e",
-                  "torzshim",
-                ];
-                currentPage = 1;
-                loadInfo.textContent = `Betöltött egyedek: ${eventData.animal_count} (Betöltési idő: ${eventData.load_time.toFixed(2)}s)`;
-                calcInfo.textContent = "";
-                ibcControls.style.display = "flex";
-                matingButton.style.display = "none";
-                matingButton.disabled = true;
-                progressBar.style.width = "100%";
-                progressBar.textContent = "100%";
-                progressStatus.textContent = "Kész";
-                progressContainer.style.display = "none";
-                // Fetch data separately
-                fetch(`/get_data?session_id=${currentSessionId}`)
-                  .then((response) => {
-                    if (!response.ok) {
-                      throw new Error(
-                        `HTTP ${response.status}: ${response.statusText}`,
-                      );
-                    }
-                    return response.json();
-                  })
-                  .then((dataResponse) => {
-                    console.log(
-                      "Data loaded after CSV upload:",
-                      dataResponse.records?.length,
-                      "records",
-                    );
-                    data = dataResponse.records;
-
-                    // Restore missing parents
-                    missingParents = new Set(
-                      (dataResponse.missing_parents || []).map((id) =>
-                        normalizeAnimalId(id),
-                      ),
-                    );
-                    console.log(
-                      "Missing parents restored:",
-                      missingParents.size,
-                    );
-
-                    renderGrid();
-                    gridContainer.style.display = "block";
-                    matingButton.style.display = "inline-block";
-                    matingButton.disabled = false;
-                  })
-                  .catch((error) => {
-                    console.error("Error fetching data after upload:", error);
-                    console.error("Session ID was:", currentSessionId);
-                    // Show error
-                    const errorContainer =
-                      document.getElementById("error-container");
-                    errorContainer.textContent =
-                      "Hiba az adatok betöltése során: " + error.message;
-                    errorContainer.style.display = "block";
-                  });
-              } else if (eventType === "error") {
-                throw new Error(
-                  eventData.error || "Ismeretlen hiba a feltöltés során",
-                );
-              }
-            }
-          }
-        }
-      } catch (error) {
-        errorContainer.textContent = error.message;
-        errorContainer.style.display = "block";
-        progressContainer.style.display = "none";
-        data = [];
-        renderGrid();
-        matingButton.style.display = "none";
-        matingButton.disabled = true;
       }
     });
 
@@ -491,12 +230,17 @@
     animal_id: "Egyed azonosító",
     dam_id: "Anya",
     sire_id: "Apa",
-    farm: "Tenyészet",
+    farm: "Tenyészet kód",
+    TENYNEV: "Tenyészet",
+    HELYSEG: "Helység",
+    species: "Faj Kód",
+    breed: "Fajta Kód",
+    FAJTA_NEV: "Fajta",
     birth_year: "Szül. Év",
     gender: "Ivar",
     torzs_e: "Törzs-e",
     torzshim: "Törzshím",
-    ibc_default: "BTE (Alapértelmezett)",
+
     ibc_traditional: "BTE (Hagyományos)",
     ibc_meuwissen: "BTE (Meuwissen-Luo)",
   };
@@ -504,9 +248,12 @@
     "animal_id",
     "dam_id",
     "sire_id",
-    "farm",
+    "FAJTA_NEV",
+    "TENYNEV",
+    "HELYSEG",
     "birth_year",
     "gender",
+    "torzs_e",
     "torzshim",
   ];
 
@@ -531,13 +278,13 @@
     const baseData =
       filterTorz && filterTorz.checked
         ? data.filter(
-            (r) =>
-              r &&
-              (r.torzs_e === "ïgen" ||
-                r.torzs_e === "igen" ||
-                r.torzs_e === "true" ||
-                r.torzs_e === "1"),
-          )
+          (r) =>
+            r &&
+            (r.torzs_e === "ïgen" ||
+              r.torzs_e === "igen" ||
+              r.torzs_e === "true" ||
+              r.torzs_e === "1"),
+        )
         : data;
 
     const field = searchField ? searchField.value : "animal_id";
@@ -654,10 +401,10 @@
       headers.forEach((header) => {
         let cellValue = row[header];
         if (
-          header === "farm" &&
+          (header === "farm" || header === "TENYNEV") &&
           (cellValue === undefined || cellValue === null)
         ) {
-          cellValue = row["farm_id"];
+          cellValue = row["farm_id"] || row["farm"];
         }
         cellValue =
           cellValue === null || cellValue === undefined ? "" : cellValue;
@@ -703,8 +450,7 @@
           cellValue = `<a href="#" class="parent-link" data-parent-id="${encodedParentId}">${safeValue}</a>`;
         } else if (
           header === "ibc_traditional" ||
-          header === "ibc_meuwissen" ||
-          header === "ibc_default"
+          header === "ibc_meuwissen"
         ) {
           if (typeof cellValue === "number") {
             cellValue = cellValue.toFixed(4);
@@ -721,13 +467,7 @@
   }
 
   document.addEventListener("DOMContentLoaded", () => {
-    // Check if returning from mating selection with an existing session
-    const urlParams = new URLSearchParams(window.location.search);
-    const sessionIdFromUrl = urlParams.get("session_id");
-
-    if (sessionIdFromUrl) {
-      // Restore the session
-      currentSessionId = sessionIdFromUrl;
+    if (currentSessionId && currentSessionId !== "None" && currentSessionId !== "") {
       console.log("Restoring session:", currentSessionId);
 
       // Fetch and display the data
@@ -765,11 +505,26 @@
           const gridContainer = document.querySelector(".grid-container");
           if (gridContainer) gridContainer.style.display = "block";
 
+          const loadInfo = document.getElementById("load-info");
+          if (loadInfo) loadInfo.textContent = `Betöltött egyedek: ${data.length}`;
+
           const ibcControls = document.getElementById("ibc-controls");
-          if (ibcControls) ibcControls.style.display = "block";
+          if (ibcControls) ibcControls.style.display = "flex";
 
           const matingButton = document.getElementById("go-to-mating");
-          if (matingButton) matingButton.style.display = "inline-block";
+          if (matingButton) {
+            const hasIbc = data.length > 0 && (data[0].hasOwnProperty('ibc_traditional') || data[0].hasOwnProperty('ibc_meuwissen'));
+            if (hasIbc) {
+              matingButton.style.display = "inline-block";
+              matingButton.disabled = false;
+
+              if (data[0].hasOwnProperty('ibc_traditional') && !headers.includes('ibc_traditional')) headers.push('ibc_traditional');
+              if (data[0].hasOwnProperty('ibc_meuwissen') && !headers.includes('ibc_meuwissen')) headers.push('ibc_meuwissen');
+            } else {
+              matingButton.style.display = "none";
+              matingButton.disabled = true;
+            }
+          }
 
           console.log("About to render grid...");
           // Render the grid
@@ -976,7 +731,7 @@
           if (event.data) {
             try {
               errorMsg = JSON.parse(event.data).error || errorMsg;
-            } catch (e) {}
+            } catch (e) { }
           }
           alert(errorMsg);
           progressContainer.style.display = "none";

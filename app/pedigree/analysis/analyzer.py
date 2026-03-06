@@ -36,50 +36,41 @@ def find_all_ancestors(df, animal_ids):
 
     return ancestors
 
-# --- ALGORITHM 1: Tabular Method (Meuwissen-Luo) ---
+
+# --- Meuwissen-Luo Inbreeding Calculation (Optimized Diagonal Algorithm) ---
 
 
-def calculate_inbreeding_tabular(df, progress_callback=None, core_animal_ids=None):
+
+def calculate_inbreeding_diagonal(df, progress_callback=None, core_animal_ids=None):
     """
-    Calculates inbreeding coefficients for all animals in the dataframe
-    using the tabular method (Meuwissen-Luo), which is robust and efficient.
+    Optimized Meuwissen & Luo (1992) diagonal algorithm.
+    Computes inbreeding coefficients without building the full N×N relationship matrix.
+    Uses O(N) space instead of O(N²), making it feasible for very large pedigrees.
 
-    Args:
-        df: Pedigree dataframe
-        progress_callback: Optional callable(current, total) for progress updates
-        core_animal_ids: Optional list of core animal IDs to filter to. If provided,
-                        only core animals and their ancestors are calculated.
+    For each animal, it traces back through ancestors using a sparse max-heap approach,
+    accumulating path contributions and computing F = sum(c_j^2 * d_j) - 1.
     """
     import sys
     import time
+    import heapq
+
     t_start = time.time()
 
-    # The animal_id is now a string, so the numeric conversion has been removed.
-    # Ensure indices are unique
     df = df.drop_duplicates(subset=['animal_id']).set_index('animal_id').copy()
 
-    # If core animals are specified, filter to include only them and their ancestors
     if core_animal_ids:
-        # Only include core animals that actually exist in the dataframe
-        core_animals_in_df = [
-            aid for aid in core_animal_ids if aid in df.index]
-
-        t_ancestor = time.time()
-        relevant_animals = find_all_ancestors(
-            df.reset_index(), core_animals_in_df)
-        print(
-            f"Time to find ancestors: {time.time() - t_ancestor:.2f}s", file=sys.stderr)
-
+        core_animals_in_df = [aid for aid in core_animal_ids if aid in df.index]
+        relevant_animals = find_all_ancestors(df.reset_index(), core_animals_in_df)
         df_filtered = df.loc[df.index.isin(relevant_animals)].copy()
         print(
-            f"Meuwissen optimization: Found {len(core_animals_in_df)} out of {len(core_animal_ids)} requested core animals. Using {len(df_filtered)} total animals ({len(core_animals_in_df)} core + {len(relevant_animals) - len(core_animals_in_df)} ancestors) instead of {len(df)}", file=sys.stderr)
+            f"Diagonal: {len(df_filtered)} animals ({len(core_animals_in_df)} core + "
+            f"{len(df_filtered) - len(core_animals_in_df)} ancestors) from {len(df)} total",
+            file=sys.stderr)
     else:
         df_filtered = df.copy()
-        print(
-            f"Meuwissen: No optimization - calculating for all {len(df)} animals", file=sys.stderr)
+        print(f"Diagonal: calculating for all {len(df)} animals", file=sys.stderr)
 
-    # CRITICAL: Sort by birth_year for correct topological order (must process parents before offspring)
-    # If no birth_year, use alphabetical as fallback
+    # Sort by birth_year for topological order (parents before offspring)
     t_sort = time.time()
     if 'birth_year' in df_filtered.columns:
         try:
@@ -88,74 +79,85 @@ def calculate_inbreeding_tabular(df, progress_callback=None, core_animal_ids=Non
             df_filtered = df_filtered.sort_values(
                 'birth_year_numeric', na_position='first')
             df_filtered = df_filtered.drop('birth_year_numeric', axis=1)
-        except:
-            # Fallback to alphabetical if conversion fails
+        except Exception:
             df_filtered = df_filtered.sort_index()
     else:
         df_filtered = df_filtered.sort_index()
 
     df_filtered = df_filtered.reset_index().set_index('animal_id')
-    print(
-        f"Time to sort and reset index: {time.time() - t_sort:.2f}s", file=sys.stderr)
+    print(f"Diagonal sort time: {time.time() - t_sort:.2f}s", file=sys.stderr)
 
-    animal_pos = {animal_id: i for i,
-                  animal_id in enumerate(df_filtered.index)}
-    n = len(df_filtered.index)
-    A = np.zeros((n, n))
+    animals = list(df_filtered.index)
+    n = len(animals)
+    animal_pos = {aid: i for i, aid in enumerate(animals)}
 
-    t_map = time.time()
-    # Pre-build parent lookup dictionary for O(1) access instead of using slow .loc
-    parent_map = {row.animal_id: (row.sire_id, row.dam_id)
-                  for row in df_filtered.reset_index().itertuples()}
-    print(
-        f"Time to build parent_map: {time.time() - t_map:.2f}s", file=sys.stderr)
+    # Build parent position map
+    parent_pos = {}
+    for row in df_filtered.reset_index().itertuples():
+        pos = animal_pos[row.animal_id]
+        sp = animal_pos.get(row.sire_id, -1) if pd.notna(row.sire_id) else -1
+        dp = animal_pos.get(row.dam_id, -1) if pd.notna(row.dam_id) else -1
+        parent_pos[pos] = (sp, dp)
+
+    F = [0.0] * n   # Inbreeding coefficients
+    d = [0.0] * n   # Mendelian sampling variances
 
     t_compute = time.time()
-    for i, animal_id in enumerate(df_filtered.index):
-        sire_id, dam_id = parent_map.get(animal_id, (None, None))
 
-        # Get positions, handling cases where parents are not in the pedigree
-        sire_pos = animal_pos.get(sire_id, -1) if pd.notna(sire_id) else -1
-        dam_pos = animal_pos.get(dam_id, -1) if pd.notna(dam_id) else -1
+    for i in range(n):
+        si, di_p = parent_pos.get(i, (-1, -1))
 
-        # Both parents known
-        if sire_pos != -1 and dam_pos != -1:
-            # Get coancestry between parents
-            coancestry = A[sire_pos,
-                           dam_pos] if sire_pos < dam_pos else A[dam_pos, sire_pos]
-            A[i, i] = 1 + 0.5 * coancestry
-            # Set relationship with other animals
-            for j in range(i):
-                val = 0.5 * (A[sire_pos, j] + A[dam_pos, j])
-                A[i, j] = A[j, i] = val
-        # Only one parent known
-        elif sire_pos != -1 or dam_pos != -1:
-            parent_pos = sire_pos if sire_pos != -1 else dam_pos
-            A[i, i] = 1.0
-            # Set relationship with other animals
-            for j in range(i):
-                val = 0.5 * A[parent_pos, j]
-                A[i, j] = A[j, i] = val
-        # No parents known (base animal)
+        # Mendelian sampling variance
+        if si >= 0 and di_p >= 0:
+            d[i] = 0.5 - 0.25 * (F[si] + F[di_p])
+        elif si >= 0:
+            d[i] = 0.75 - 0.25 * F[si]
+        elif di_p >= 0:
+            d[i] = 0.75 - 0.25 * F[di_p]
         else:
-            A[i, i] = 1.0
+            d[i] = 1.0
 
-        # Emit progress every 50 animals or at the end for more frequent updates
+        # Trace back through ancestors using sparse max-heap.
+        # Process in descending position order to ensure all contributions
+        # to an ancestor are accumulated before that ancestor is processed.
+        contrib = {i: 1.0}
+        heap = [-i]
+        visited = set()
+        fi = 0.0
+
+        while heap:
+            j = -heapq.heappop(heap)
+            if j in visited:
+                continue
+            visited.add(j)
+
+            c = contrib.get(j, 0.0)
+            if c == 0.0:
+                continue
+
+            fi += c * c * d[j]
+
+            sj, dj = parent_pos.get(j, (-1, -1))
+            if sj >= 0 and sj not in visited:
+                contrib[sj] = contrib.get(sj, 0.0) + 0.5 * c
+                heapq.heappush(heap, -sj)
+            if dj >= 0 and dj not in visited:
+                contrib[dj] = contrib.get(dj, 0.0) + 0.5 * c
+                heapq.heappush(heap, -dj)
+
+        F[i] = fi - 1.0
+
         if progress_callback and (i % 50 == 0 or i == n - 1):
             progress_callback(i + 1, n)
 
-    print(
-        f"Time for matrix computation loop: {time.time() - t_compute:.2f}s", file=sys.stderr)
+    print(f"Diagonal computation time: {time.time() - t_compute:.2f}s", file=sys.stderr)
 
-    t_extract = time.time()
-    inbreeding_coeffs = {animal_id: A[i, i] -
+    result = {animals[i]: F[i] for i in range(n)}
+    total_time = time.time() - t_start
+    print(f"TOTAL Diagonal Meuwissen time: {total_time:.2f}s", file=sys.stderr)
 
-                         1 for i, animal_id in enumerate(df_filtered.index)}
-    print(
-        f"Time to extract inbreeding coefficients: {time.time() - t_extract:.2f}s", file=sys.stderr)
-    print(
-        f"TOTAL Meuwissen calculation time: {time.time() - t_start:.2f}s", file=sys.stderr)
-    return inbreeding_coeffs
+    return result
+
 
 # --- ALGORITHM 2: Path-finding Method ---
 

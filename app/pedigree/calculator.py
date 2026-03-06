@@ -28,12 +28,14 @@ class PedigreeCalculator:
 
         # Initialize a cache for the slower path-based results to avoid re-computation
         self.F_path_cache = {}
-
     def _ensure_meuwissen_initialized(self):
-        """Ensure Meuwissen-Luo cache is initialized (lazy initialization)."""
+        """Ensure Meuwissen-Luo cache is initialized (lazy initialization).
+        Runs the optimized diagonal algorithm.
+        """
         if not self.meuwissen_initialized:
-            self.F_meuwissen_cache = analyzer.calculate_inbreeding_tabular(
-                self.df, progress_callback=self.progress_callback, core_animal_ids=self.core_animal_ids)
+            self.F_meuwissen_cache = analyzer.calculate_inbreeding_diagonal(
+                self.df, progress_callback=self.progress_callback,
+                core_animal_ids=self.core_animal_ids)
             self.meuwissen_initialized = True
 
     def get_inbreeding_meuwissen(self, animal_id):
