@@ -6,48 +6,166 @@
     :root {
         --lowest-ibc-bg: #d4edda;
     }
-    #results-table { width: 100%; border-collapse: collapse; margin-top: 2rem; }
-    #results-table th, #results-table td { border: 1px solid #ddd; padding: 12px; text-align: left; }
-    #results-table thead { background-color: #f2f2f2; position: sticky; top: 0; }
-    .sortable-header { cursor: pointer; position: relative; user-select: none; }
-    .sortable-header .sort-indicator { display: inline-block; width: 1em; text-align: left; }
-    .sortable-header.sort-asc .sort-indicator::after { content: ' ▲'; }
-    .sortable-header.sort-desc .sort-indicator::after { content: ' ▼'; }
-    .lowest-ibc { background-color: var(--lowest-ibc-bg); }
+
+    #results-table {
+        width: 100%;
+        border-collapse: collapse;
+        margin-top: 2rem;
+    }
+
+    #results-table th,
+    #results-table td {
+        border: 1px solid #ddd;
+        padding: 12px;
+        text-align: left;
+    }
+
+    #results-table thead {
+        background-color: #f2f2f2;
+        position: sticky;
+        top: 0;
+    }
+
+    .sortable-header {
+        cursor: pointer;
+        position: relative;
+        user-select: none;
+    }
+
+    .sortable-header .sort-indicator {
+        display: inline-block;
+        width: 1em;
+        text-align: left;
+    }
+
+    .sortable-header.sort-asc .sort-indicator::after {
+        content: ' ▲';
+    }
+
+    .sortable-header.sort-desc .sort-indicator::after {
+        content: ' ▼';
+    }
+
+    .lowest-ibc {
+        background-color: var(--lowest-ibc-bg);
+    }
 
     /* Modal Styles */
-    .modal { display: none; position: fixed; z-index: 1000; left: 0; top: 0; width: 100%; height: 100%; overflow: auto; background-color: rgba(0,0,0,0.5); }
-    .modal-content { background-color: #fefefe; margin: 8% auto; padding: 20px; border: 1px solid #888; width: 80%; max-width: 800px; border-radius: var(--border-radius); }
-    .close-button { color: #aaa; float: right; font-size: 28px; font-weight: bold; cursor: pointer; }
-    #modal-dam-list-container { max-height: 350px; overflow-y: auto; border: 1px solid #eee; margin-top: 1rem; }
-    #modal-dam-table { width: 100%; border-collapse: collapse; }
-    #modal-dam-table th, #modal-dam-table td { border-bottom: 1px solid #ddd; padding: 8px; }
-    #modal-dam-table thead { background-color: #f9f9f9; position: sticky; top: 0; }
-    #modal-pagination { margin-top: 1rem; text-align: center; user-select: none; }
-    #modal-pagination button { margin: 0 0.5rem; }
-    #modal-page-info { display: inline-block; width: 100px; }
-    #modal-summary-stats { margin: 1rem 0; padding: 1rem; background-color: #f9f9f9; border-radius: var(--border-radius); }
-    .action-buttons-container { margin-top: 2rem; display: flex; justify-content: flex-end; }
+    .modal {
+        display: none;
+        position: fixed;
+        z-index: 1000;
+        left: 0;
+        top: 0;
+        width: 100%;
+        height: 100%;
+        overflow: auto;
+        background-color: rgba(0, 0, 0, 0.5);
+    }
+
+    .modal-content {
+        background-color: #fefefe;
+        margin: 8% auto;
+        padding: 20px;
+        border: 1px solid #888;
+        width: 80%;
+        max-width: 800px;
+        border-radius: var(--border-radius);
+    }
+
+    .close-button {
+        color: #aaa;
+        float: right;
+        font-size: 28px;
+        font-weight: bold;
+        cursor: pointer;
+    }
+
+    #modal-dam-list-container {
+        max-height: 350px;
+        overflow-y: auto;
+        border: 1px solid #eee;
+        margin-top: 1rem;
+    }
+
+    #modal-dam-table {
+        width: 100%;
+        border-collapse: collapse;
+    }
+
+    #modal-dam-table th,
+    #modal-dam-table td {
+        border-bottom: 1px solid #ddd;
+        padding: 8px;
+    }
+
+    #modal-dam-table thead {
+        background-color: #f9f9f9;
+        position: sticky;
+        top: 0;
+    }
+
+    #modal-pagination {
+        margin-top: 1rem;
+        text-align: center;
+        user-select: none;
+    }
+
+    #modal-pagination button {
+        margin: 0 0.5rem;
+    }
+
+    #modal-page-info {
+        display: inline-block;
+        width: 100px;
+    }
+
+    #modal-summary-stats {
+        margin: 1rem 0;
+        padding: 1rem;
+        background-color: #f9f9f9;
+        border-radius: var(--border-radius);
+    }
+
+    .action-buttons-container {
+        margin-top: 2rem;
+        display: flex;
+        justify-content: flex-end;
+    }
 </style>
 
 <div class="container">
-    <h1>Szimulációs Eredmények</h1>
-    <p>A táblázat a kiválasztott apák és anyák lehetséges párosításainak összesített eredményeit mutatja. Kattintson a "Részletek" gombra egy apa összes párosításának megtekintéséhez.</p>
+    <div style="margin-bottom: 1rem">
+        <button onclick="window.location.href='{{ url_for('main.mating_selection') }}?session_id={{ session_id }}'"
+            class="button" style="background-color: #6c757d">
+            ← Vissza az egyedkiválasztáshoz
+        </button>
+    </div>
+    <h1>Szimulált párosítások eredménye</h1>
+    <p>A táblázat a kiválasztott apák és anyák lehetséges párosításainak összesített eredményeit mutatja. Kattintson a
+        "Részletek" gombra egy apa összes párosításának megtekintéséhez.</p>
 
-    <div class="action-buttons-container">
+    <div class="action-buttons-container" style="gap: 10px;">
+        <button id="export-pdf-btn" class="button" style="background-color: #28a745;">Exportálás PDF-be</button>
         <button id="export-btn" class="button">Exportálás Excelbe</button>
     </div>
 
     <table id="results-table">
         <thead>
             <tr>
-                <th class="sortable-header" data-sort-key="sire_id">Apa Azonosító<span class="sort-indicator"></span></th>
-                <th class="sortable-header" data-sort-key="sire_farm">Apa Tenyészet<span class="sort-indicator"></span></th>
-                <th class="sortable-header" data-sort-key="sire_birth_year">Apa Szül. Év<span class="sort-indicator"></span></th>
+                <th class="sortable-header" data-sort-key="sire_id">Apa Azonosító<span class="sort-indicator"></span>
+                </th>
+                <th class="sortable-header" data-sort-key="sire_farm">Apa Tenyészet<span class="sort-indicator"></span>
+                </th>
+                <th class="sortable-header" data-sort-key="sire_birth_year">Apa Szül. Év<span
+                        class="sort-indicator"></span></th>
                 <th class="sortable-header" data-sort-key="sire_ibc">Apa BTE<span class="sort-indicator"></span></th>
-                <th class="sortable-header" data-sort-key="avg_offspring_ibc">Várható Utód BTE (Átlag)<span class="sort-indicator"></span></th>
-                <th class="sortable-header" data-sort-key="min_offspring_ibc">Várható Utód BTE (Min)<span class="sort-indicator"></span></th>
-                <th class="sortable-header" data-sort-key="max_offspring_ibc">Várható Utód BTE (Max)<span class="sort-indicator"></span></th>
+                <th class="sortable-header" data-sort-key="avg_offspring_ibc">Várható Utód BTE (Átlag)<span
+                        class="sort-indicator"></span></th>
+                <th class="sortable-header" data-sort-key="min_offspring_ibc">Várható Utód BTE (Min)<span
+                        class="sort-indicator"></span></th>
+                <th class="sortable-header" data-sort-key="max_offspring_ibc">Várható Utód BTE (Max)<span
+                        class="sort-indicator"></span></th>
                 <th>Művelet</th>
             </tr>
         </thead>
@@ -83,8 +201,9 @@
 </div>
 
 <script>
-document.addEventListener('DOMContentLoaded', () => {
-    const pairings = {{ results|tojson|safe }};
+    document.addEventListener('DOMContentLoaded', () => {
+        const pairings = {{ results| tojson | safe
+    }};
     const tableBody = document.querySelector('#results-table tbody');
     const modal = document.getElementById('details-modal');
     const closeButton = document.querySelector('.close-button');
@@ -105,11 +224,11 @@ document.addEventListener('DOMContentLoaded', () => {
         pairings.forEach(p => {
             if (!sires[p.sire_id]) {
                 sires[p.sire_id] = {
-                    sire_id: p.sire_id, 
-                    sire_farm: p.sire_farm, 
+                    sire_id: p.sire_id,
+                    sire_farm: p.sire_farm,
                     sire_birth_year: p.sire_birth_year,
                     sire_ibc: p.sire_ibc,
-                    pairings: [], 
+                    pairings: [],
                     total_offspring_ibc: 0,
                     min_offspring_ibc: Infinity,
                     max_offspring_ibc: -Infinity
@@ -200,7 +319,7 @@ document.addEventListener('DOMContentLoaded', () => {
                 <td>${(p.offspring_ibc || 0).toFixed(4)}</td>
             </tr>
         `).join('');
-        
+
         const paginationContainer = document.getElementById('modal-pagination');
         const totalPages = Math.ceil(modalCurrentPairings.length / MODAL_ROWS_PER_PAGE);
         paginationContainer.innerHTML = totalPages > 1 ? `
@@ -221,12 +340,12 @@ document.addEventListener('DOMContentLoaded', () => {
         if (!sireData) return;
 
         document.getElementById('modal-sire-details').innerHTML = `<strong>Apa Azonosító:</strong> ${sireData.sire_id} | <strong>Tenyészet:</strong> ${sireData.sire_farm || 'Ismeretlen'} | <strong>Szül. Év:</strong> ${sireData.sire_birth_year || 'Ismeretlen'} | <strong>Apa BTE:</strong> ${(sireData.sire_ibc || 0).toFixed(4)}`;
-        
+
         const stats = `<strong>Átlagos Várható Utód BTE:</strong> ${(sireData.avg_offspring_ibc || 0).toFixed(4)}<br>
                        <strong>Min Várható Utód BTE:</strong> ${(sireData.min_offspring_ibc === Infinity ? 0 : sireData.min_offspring_ibc).toFixed(4)}<br>
                        <strong>Max Várható Utód BTE:</strong> ${(sireData.max_offspring_ibc === -Infinity ? 0 : sireData.max_offspring_ibc).toFixed(4)}`;
         document.getElementById('modal-summary-stats').innerHTML = stats;
-        
+
         modalCurrentPairings = sireData.pairings;
         modalCurrentPage = 1;
         renderModalDamList();
@@ -269,8 +388,54 @@ document.addEventListener('DOMContentLoaded', () => {
         }
     }
 
+    async function exportPdf() {
+        if (!pairings || pairings.length === 0) {
+            alert('Nincs mit exportálni.');
+            return;
+        }
+
+        try {
+            const response = await fetch("{{ url_for('main.export_pdf') }}", {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json'
+                },
+                body: JSON.stringify({ pairings: pairings })
+            });
+
+            if (!response.ok) throw new Error('Network response was not ok.');
+
+            const blob = await response.blob();
+            const url = window.URL.createObjectURL(blob);
+            const a = document.createElement('a');
+            a.style.display = 'none';
+            a.href = url;
+
+            // Extract filename from Content-Disposition header if possible
+            let filename = 'parositas_eredmenyek.pdf';
+            const disposition = response.headers.get('Content-Disposition');
+            if (disposition && disposition.indexOf('attachment') !== -1) {
+                const filenameRegex = /filename[^;=\n]*=((['"]).*?\2|[^;\n]*)/;
+                const matches = filenameRegex.exec(disposition);
+                if (matches != null && matches[1]) {
+                    filename = matches[1].replace(/['"]/g, '');
+                }
+            }
+            a.download = filename;
+
+            document.body.appendChild(a);
+            a.click();
+            window.URL.revokeObjectURL(url);
+            document.body.removeChild(a);
+        } catch (error) {
+            console.error('Hiba a PDF exportálás során:', error);
+            alert('A PDF exportálás sikertelen volt.');
+        }
+    }
+
     // Event Listeners
     document.getElementById('export-btn').addEventListener('click', exportResults);
+    document.getElementById('export-pdf-btn').addEventListener('click', exportPdf);
     document.querySelectorAll('.sortable-header').forEach(header => {
         header.addEventListener('click', () => sortTable(header.dataset.sortKey, header));
     });

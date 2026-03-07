@@ -140,8 +140,22 @@
 <body>
   <header>
     <a href="{{ url_for('main.index') }}">Párosítási lehetőségeket tesztelő tenyésztésvezetői modul</a>
-    <nav>
-      <a href="{{ url_for('main.index') }}" class="action-button">Főoldal</a>
+    <nav style="display: flex; align-items: center;">
+      {% if current_user.is_authenticated %}
+      <div style="margin-right: 20px; text-align: right; line-height: 1.2;">
+        <strong style="display: block; font-size: 0.95em;">{{ current_user.name }}</strong>
+        <span style="font-size: 0.8em; color: #a9d0f5;">{{ 'Adminisztrátor' if current_user.is_admin else 'Felhasználó'
+          }}</span>
+      </div>
+      {% if current_user.is_admin %}
+      <a href="{{ url_for('admin.list_users') }}" class="action-button"
+        style="background-color: #28a745; margin-right: 10px;">Felhasználók</a>
+      {% endif %}
+      <a href="{{ url_for('main.index') }}" class="action-button" style="margin-right: 10px;">Főoldal</a>
+      <a href="{{ url_for('auth.logout') }}" class="action-button" style="background-color: #dc3545;">Kijelentkezés</a>
+      {% else %}
+      <a href="{{ url_for('auth.login') }}" class="action-button">Bejelentkezés</a>
+      {% endif %}
     </nav>
   </header>
   <main class="container">{% block content %}{% endblock %}</main>

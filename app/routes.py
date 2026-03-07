@@ -1,4 +1,5 @@
 from flask import Blueprint, render_template, request, jsonify, current_app, Response, session, send_file
+from flask_login import login_required
 import pandas as pd
 import numpy as np
 import json
@@ -60,6 +61,7 @@ def _resolve_default_ibc(calculator, animal_id, preferred_algorithm=None):
 
 
 @main_blueprint.route('/', methods=['GET'])
+@login_required
 def index():
     if 'user_session_id' not in session:
         session['user_session_id'] = str(uuid.uuid4())
@@ -138,6 +140,7 @@ def _load_reference_data(request_file_key, expected_columns, session_key, sessio
 
 
 @main_blueprint.route('/upload_breed', methods=['POST'])
+@login_required
 def upload_breed():
     if 'user_session_id' not in session: return jsonify({'error': 'No session'}), 400
     session_id = session['user_session_id']
@@ -147,6 +150,7 @@ def upload_breed():
     return "<script>window.location.href='/';</script>", 200
 
 @main_blueprint.route('/upload_farm', methods=['POST'])
+@login_required
 def upload_farm():
     if 'user_session_id' not in session: return jsonify({'error': 'No session'}), 400
     session_id = session['user_session_id']
@@ -156,6 +160,7 @@ def upload_farm():
     return "<script>window.location.href='/';</script>", 200
 
 @main_blueprint.route('/clear_breed', methods=['POST'])
+@login_required
 def clear_breed():
     if 'user_session_id' in session:
         session_id = session['user_session_id']
@@ -168,6 +173,7 @@ def clear_breed():
     return "<script>window.location.href='/';</script>", 200
 
 @main_blueprint.route('/clear_farm', methods=['POST'])
+@login_required
 def clear_farm():
     if 'user_session_id' in session:
         session_id = session['user_session_id']
@@ -180,6 +186,7 @@ def clear_farm():
     return "<script>window.location.href='/';</script>", 200
 
 @main_blueprint.route('/clear_pedigree', methods=['POST'])
+@login_required
 def clear_pedigree():
     if 'user_session_id' in session:
         session_id = session['user_session_id']
@@ -191,20 +198,24 @@ def clear_pedigree():
     return "<script>window.location.href='/';</script>", 200
 
 @main_blueprint.route('/view_pedigree', methods=['GET'])
+@login_required
 def view_pedigree():
     # Renders the classic index.html (renamed to pedigree.html)
     session_id = session.get('user_session_id')
     return render_template('pedigree.html', session_id=session_id)
 
 @main_blueprint.route('/view_breeds', methods=['GET'])
+@login_required
 def view_breeds():
     return render_template('breeds.html')
 
 @main_blueprint.route('/view_farms', methods=['GET'])
+@login_required
 def view_farms():
     return render_template('farms.html')
 
 @main_blueprint.route('/api/breeds', methods=['GET'])
+@login_required
 def api_breeds():
     if 'user_session_id' not in session: return jsonify([]), 400
     session_id = session['user_session_id']
@@ -216,6 +227,7 @@ def api_breeds():
     return jsonify({'records': []})
 
 @main_blueprint.route('/api/farms', methods=['GET'])
+@login_required
 def api_farms():
     if 'user_session_id' not in session: return jsonify([]), 400
     session_id = session['user_session_id']
@@ -227,6 +239,7 @@ def api_farms():
     return jsonify({'records': []})
 
 @main_blueprint.route('/upload_and_process_stream', methods=['POST'])
+@login_required
 def upload_and_process_stream():
     """
     Streams progress updates during CSV upload and IBC pre-calculation.
@@ -437,11 +450,13 @@ def upload_and_process_stream():
 
 
 @main_blueprint.route('/upload_and_process', methods=['POST'])
+@login_required
 def upload_and_process():
     return jsonify({"error": "Ez a végpont már nem támogatott, kérjük használja a streamelt verziót."}), 400
 
 
 @main_blueprint.route('/calculate_ibcs')
+@login_required
 def calculate_ibcs_route():
     session_id = request.args.get('session_id')
     algorithm = request.args.get('algorithm', 'both')
@@ -621,6 +636,7 @@ def calculate_ibcs_route():
 
 
 @main_blueprint.route('/pedigree/mating_selection')
+@login_required
 def mating_selection():
     session_id = request.args.get('session_id')
     current_app.logger.info(
@@ -635,6 +651,7 @@ def mating_selection():
 
 
 @main_blueprint.route('/pedigree/animals/<session_id>')
+@login_required
 def get_animals(session_id):
     if not session_id or session_id not in current_app.sessions:
         return jsonify({"error": "Érvénytelen munkamenet"}), 404
@@ -652,6 +669,14 @@ def get_animals(session_id):
     if 'farm' not in df.columns:
         df['farm'] = 'Ismeretlen'
     else:
+        # Map farm ID to Farm Name if farm dictionary is loaded
+        if 'farm' in current_app.sessions[session_id] and current_app.sessions[session_id]['farm'] is not None:
+            farm_dict_df = current_app.sessions[session_id]['farm']
+            if 'TENYKOD' in farm_dict_df.columns and 'TENYNEV' in farm_dict_df.columns:
+                # Create a mapping dictionary {TENYKOD: TENYNEV}
+                farm_map = dict(zip(farm_dict_df['TENYKOD'], farm_dict_df['TENYNEV']))
+                df['farm'] = df['farm'].map(farm_map).fillna(df['farm'])
+
         df['farm'] = df['farm'].fillna('Ismeretlen')
 
     if 'birth_year' not in df.columns:
@@ -725,6 +750,7 @@ def get_animals(session_id):
 
 
 @main_blueprint.route('/pedigree/export_results', methods=['POST'])
+@login_required
 def export_results():
     data = request.get_json()
     if not data or 'pairings' not in data:
@@ -762,18 +788,118 @@ def export_results():
 
         return send_file(
             output,
-            mimetype='application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
+            download_name='parositas_eredmenyek.xlsx',
             as_attachment=True,
-            download_name='szimulacios_eredmenyek.xlsx'
+            mimetype='application/vnd.openxmlformats-officedocument.spreadsheetml.sheet'
+        )
+    except Exception as e:
+        current_app.logger.error(f"Hiba az eredmények exportálásakor: {e}", exc_info=True)
+        return "Hiba történt az exportálás során.", 500
+
+
+from xhtml2pdf import pisa
+from datetime import datetime
+from flask_login import current_user
+
+@main_blueprint.route('/pedigree/export_pdf', methods=['POST'])
+@login_required
+def export_pdf():
+    data = request.get_json()
+    if not data or 'pairings' not in data:
+        return "Hiba: Hiányzó adatok az exportáláshoz.", 400
+
+    try:
+        pairings_data = data['pairings']
+        
+        # Group pairings by sire to generate the summary matching the frontend view
+        from collections import defaultdict
+        sire_summary = defaultdict(list)
+        
+        for p in pairings_data:
+            sire_id = p.get('sire_id')
+            sire_summary[sire_id].append(p)
+            
+        summary_data = []
+        for sire_id, parings in sire_summary.items():
+            ibcs = [float(p['offspring_ibc']) for p in parings if 'offspring_ibc' in p]
+            if ibcs:
+                avg_ibc = sum(ibcs) / len(ibcs)
+                min_ibc = min(ibcs)
+                max_ibc = max(ibcs)
+                
+                # Fetch sire details from the first pairing
+                first = parings[0]
+                summary_data.append({
+                    'sire_id': sire_id,
+                    'sire_farm': first.get('sire_farm', ''),
+                    'sire_birth_year': first.get('sire_birth_year', ''),
+                    'sire_ibc': float(first.get('sire_ibc', 0)),
+                    'avg_offspring_ibc': avg_ibc,
+                    'min_offspring_ibc': min_ibc,
+                    'max_offspring_ibc': max_ibc
+                })
+        
+        # Sort by average offspring IBC descending (optional)
+        summary_data.sort(key=lambda x: x['avg_offspring_ibc'])
+        lowest_avg = summary_data[0]['avg_offspring_ibc'] if summary_data else 0
+
+        # Extract unique dams for the report parameters
+        # Extract unique dams for the report parameters
+        unique_dams_map = {}
+        for p in pairings_data:
+            dam_id = p.get('dam_id')
+            if dam_id and dam_id not in unique_dams_map:
+                unique_dams_map[dam_id] = {
+                    'dam_id': dam_id,
+                    'dam_farm': p.get('dam_farm', ''),
+                    'dam_birth_year': p.get('dam_birth_year', ''),
+                    'dam_ibc': float(p.get('dam_ibc', 0))
+                }
+        unique_dams = list(unique_dams_map.values())
+        unique_dams.sort(key=lambda x: str(x['dam_id']))
+
+        import os
+        from reportlab.pdfbase import pdfmetrics
+        from reportlab.pdfbase.ttfonts import TTFont
+        
+        # Manually register the native Windows Arial font directly into ReportLab.
+        # This bypasses xhtml2pdf's @font-face parser and guarantees Latin Extended support.
+        raw_font_path = r"C:\Windows\Fonts\arial.ttf"
+        pdfmetrics.registerFont(TTFont('CustomArial', raw_font_path))
+
+        # Render HTML string
+        html_string = render_template(
+            'pedigree/pdf_report.html',
+            summary_data=summary_data,
+            lowest_avg=lowest_avg,
+            unique_dams=unique_dams,
+            current_user=current_user,
+            timestamp=datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+        )
+        
+        # Create PDF without link_callback since we registered the font directly
+        pdf_stream = BytesIO()
+        pisa_status = pisa.CreatePDF(html_string, dest=pdf_stream, encoding='utf-8')
+        
+        if pisa_status.err:
+            return "Hiba a PDF generálása során.", 500
+            
+        pdf_stream.seek(0)
+        
+        return send_file(
+            pdf_stream,
+            download_name=f'parositas_eredmenyek_{datetime.now().strftime("%Y%m%d_%H%M")}.pdf',
+            as_attachment=True,
+            mimetype='application/pdf'
         )
 
     except Exception as e:
-        current_app.logger.error(
-            f"Error exporting results: {e}", exc_info=True)
-        return "Hiba az exportálás során.", 500
+        current_app.logger.error(f"Hiba a PDF exportálásakor: {e}", exc_info=True)
+        return "Hiba történt a PDF exportálás során.", 500
 
 
 @main_blueprint.route('/pedigree/simulation_results_stream', methods=['POST'])
+@login_required
 def simulation_results_stream():
     """
     Streams mating simulation results with progress updates.
@@ -794,8 +920,21 @@ def simulation_results_stream():
     sessions = current_app.sessions
     preferred_algorithm = sessions[session_id].get('last_ibc_algorithm')
 
-    df['farm'] = df['farm'].fillna('Ismeretlen')
-    df['birth_year'] = df['birth_year'].fillna('Ismeretlen')
+    if 'farm' not in df.columns:
+        df['farm'] = 'Ismeretlen'
+    else:
+        if 'farm' in current_app.sessions[session_id] and current_app.sessions[session_id]['farm'] is not None:
+            farm_dict_df = current_app.sessions[session_id]['farm']
+            if 'TENYKOD' in farm_dict_df.columns and 'TENYNEV' in farm_dict_df.columns:
+                farm_map = dict(zip(farm_dict_df['TENYKOD'], farm_dict_df['TENYNEV']))
+                df['farm'] = df['farm'].map(farm_map).fillna(df['farm'])
+
+        df['farm'] = df['farm'].fillna('Ismeretlen')
+
+    if 'birth_year' not in df.columns:
+        df['birth_year'] = 'Ismeretlen'
+    else:
+        df['birth_year'] = df['birth_year'].fillna('Ismeretlen')
 
     sire_ids = [id for id in request.form.get('sire_ids', '').split(',') if id]
     dam_ids = [id for id in request.form.get('dam_ids', '').split(',') if id]
@@ -847,6 +986,7 @@ def simulation_results_stream():
 
 
 @main_blueprint.route('/pedigree/simulation_results', methods=['POST', 'GET'])
+@login_required
 def simulation_results():
     session_id = request.args.get(
         'session_id') or request.form.get('session_id')
@@ -864,8 +1004,21 @@ def simulation_results():
             preferred_algorithm = current_app.sessions[session_id].get(
                 'last_ibc_algorithm')
 
-            df['farm'] = df['farm'].fillna('Ismeretlen')
-            df['birth_year'] = df['birth_year'].fillna('Ismeretlen')
+            if 'farm' not in df.columns:
+                df['farm'] = 'Ismeretlen'
+            else:
+                if 'farm' in current_app.sessions[session_id] and current_app.sessions[session_id]['farm'] is not None:
+                    farm_dict_df = current_app.sessions[session_id]['farm']
+                    if 'TENYKOD' in farm_dict_df.columns and 'TENYNEV' in farm_dict_df.columns:
+                        farm_map = dict(zip(farm_dict_df['TENYKOD'], farm_dict_df['TENYNEV']))
+                        df['farm'] = df['farm'].map(farm_map).fillna(df['farm'])
+
+                df['farm'] = df['farm'].fillna('Ismeretlen')
+
+            if 'birth_year' not in df.columns:
+                df['birth_year'] = 'Ismeretlen'
+            else:
+                df['birth_year'] = df['birth_year'].fillna('Ismeretlen')
 
             sire_ids = [id for id in request.form.get(
                 'sire_ids', '').split(',') if id]
@@ -897,7 +1050,7 @@ def simulation_results():
                         'offspring_ibc': offspring_ibc
                     })
 
-        return render_template('pedigree/simulation_result.html', results=results_data)
+        return render_template('pedigree/simulation_result.html', results=results_data, session_id=session_id)
 
     except Exception as e:
         current_app.logger.error(
@@ -906,6 +1059,7 @@ def simulation_results():
 
 
 @main_blueprint.route('/get_data', methods=['GET'])
+@login_required
 def get_data():
     session_id = request.args.get('session_id')
     current_app.logger.info(f"get_data called with session_id: {session_id}")

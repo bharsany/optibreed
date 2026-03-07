@@ -1,0 +1,66 @@
+{% extends "base.html" %}
+
+{% block content %}
+<div style="display: flex; justify-content: center; align-items: center; min-height: 70vh;">
+    <div
+        style="background: white; padding: 40px; border-radius: 8px; box-shadow: 0 4px 15px rgba(0,0,0,0.1); width: 100%; max-width: 400px;">
+        <h2 style="text-align: center; margin-top: 0; color: var(--primary-color, #005a9c); margin-bottom: 30px;">
+            Optibreed Bejelentkezés</h2>
+
+        {% with messages = get_flashed_messages(with_categories=true) %}
+        {% if messages %}
+        {% for category, message in messages %}
+        <div
+            style="padding: 12px; margin-bottom: 20px; border-radius: 4px; background-color: {% if category == 'danger' %}#f8d7da{% else %}#cce5ff{% endif %}; color: {% if category == 'danger' %}#721c24{% else %}#004085{% endif %}; font-size: 0.9em; text-align: center;">
+            {{ message }}
+        </div>
+        {% endfor %}
+        {% endif %}
+        {% endwith %}
+
+        <form method="POST" action="{{ url_for('auth.login') }}">
+            <div style="margin-bottom: 20px;">
+                <label for="email" style="display: block; margin-bottom: 8px; color: #555; font-weight: bold;">Email
+                    cím</label>
+                <input id="email" name="email" type="email" placeholder="nev@jelszo.hu" required autofocus
+                    style="width: 100%; padding: 12px; border: 1px solid #ccc; border-radius: 4px; box-sizing: border-box; font-size: 1em;" />
+            </div>
+
+            <div style="margin-bottom: 20px;">
+                <label for="password"
+                    style="display: block; margin-bottom: 8px; color: #555; font-weight: bold;">Jelszó</label>
+                <div style="position: relative; display: flex; align-items: center;">
+                    <input id="password" name="password" type="password" placeholder="••••••••" required
+                        style="width: 100%; padding: 12px; padding-right: 40px; border: 1px solid #ccc; border-radius: 4px; box-sizing: border-box; font-size: 1em;" />
+                    <span id="togglePassword"
+                        style="position: absolute; right: 10px; cursor: pointer; color: #aaa; font-size: 1.2em; user-select: none;"
+                        title="Jelszó megjelenítése">&#128065;</span>
+                </div>
+            </div>
+
+            <div style="margin-bottom: 30px; display: flex; align-items: center;">
+                <input id="remember" name="remember" type="checkbox" value="1" style="margin-right: 8px;" />
+                <label for="remember" style="color: #666; cursor: pointer;">Emlékezz rám</label>
+            </div>
+
+            <button type="submit" class="action-button"
+                style="width: 100%; padding: 14px; font-size: 1.1em;">Bejelentkezés</button>
+        </form>
+    </div>
+</div>
+
+<script>
+    const togglePassword = document.querySelector('#togglePassword');
+    const password = document.querySelector('#password');
+
+    togglePassword.addEventListener('click', function (e) {
+        // Toggle the type attribute
+        const type = password.getAttribute('type') === 'password' ? 'text' : 'password';
+        password.setAttribute('type', type);
+
+        // Change color based on state
+        this.style.color = type === 'password' ? '#aaa' : '#005a9c';
+        this.title = type === 'password' ? 'Jelszó megjelenítése' : 'Jelszó elrejtése';
+    });
+</script>
+{% endblock %}

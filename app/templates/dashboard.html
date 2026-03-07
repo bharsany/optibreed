@@ -468,8 +468,8 @@
                                 : "";
                             progressStatus.textContent = `${stage}${detail}`;
                         } else if (eventType === "complete") {
-                            // On successful upload, go to the view screen.
-                            window.location.href = "{{ url_for('main.view_pedigree') }}";
+                            // On successful upload, reload the page to show the 'Megtekintés' button
+                            window.location.reload();
                         } else if (eventType === "error") {
                             throw new Error(
                                 eventData.error || "Ismeretlen hiba a feltöltés során"

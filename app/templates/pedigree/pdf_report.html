@@ -1,0 +1,157 @@
+<!DOCTYPE html>
+<html lang="hu">
+
+<head>
+    <meta charset="UTF-8">
+    <title>Szimulációs eredmények</title>
+    <style>
+        @page {
+            size: A4 landscape;
+            margin: 1.5cm;
+            margin-bottom: 2cm;
+
+            @frame footer {
+                -pdf-frame-content: footerContent;
+                bottom: 0cm;
+                margin-left: 1.5cm;
+                margin-right: 1.5cm;
+                height: 1cm;
+            }
+        }
+
+        body {
+            font-family: 'CustomArial', sans-serif;
+            font-size: 10pt;
+            color: #333;
+        }
+
+        h1 {
+            color: #2c3e50;
+            text-align: center;
+            font-size: 16pt;
+            margin-bottom: 5px;
+        }
+
+        h2 {
+            color: #2c3e50;
+            font-size: 12pt;
+            margin-top: 15px;
+            margin-bottom: 5px;
+        }
+
+        p {
+            margin-bottom: 10px;
+        }
+
+        .header-info {
+            margin-bottom: 15px;
+            font-size: 10pt;
+            background-color: #f8f9fa;
+            padding: 10px;
+            border: 1px solid #e9ecef;
+            border-radius: 4px;
+        }
+
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            margin-bottom: 15px;
+        }
+
+        th,
+        td {
+            border: 1px solid #bdc3c7;
+            padding: 2px 4px;
+            text-align: left;
+            vertical-align: middle;
+            font-size: 9pt;
+        }
+
+        th {
+            background-color: #ecf0f1;
+            font-weight: bold;
+            color: #2c3e50;
+        }
+
+        .lowest-avg {
+            background-color: #d4edda;
+        }
+
+        #footerContent {
+            font-size: 8pt;
+            color: #7f8c8d;
+            border-top: 1px solid #bdc3c7;
+            padding-top: 5px;
+        }
+    </style>
+</head>
+
+<body>
+    <h1>Szimulált párosítások eredménye</h1>
+
+    <div class="header-info">
+        <strong>Intézmény / Felhasználó:</strong> {{ current_user.company }} - {{ current_user.name }}<br>
+        <strong>Időpont:</strong> {{ timestamp }}<br>
+    </div>
+
+    <h2>Kiválasztott anyák</h2>
+    <table>
+        <thead>
+            <tr>
+                <th width="25%">Anya azonosító</th>
+                <th width="35%">Anya tenyészet</th>
+                <th width="20%">Szül. év</th>
+                <th width="20%">Anya BTE</th>
+            </tr>
+        </thead>
+        <tbody>
+            {% for dam in unique_dams %}
+            <tr>
+                <td valign="middle">{{ dam.dam_id }}</td>
+                <td valign="middle">{{ dam.dam_farm }}</td>
+                <td valign="middle">{{ dam.dam_birth_year }}</td>
+                <td valign="middle">{{ "%.4f"|format(dam.dam_ibc) }}</td>
+            </tr>
+            {% endfor %}
+        </tbody>
+    </table>
+
+    <h2>Párosítások összesítése (apánként)</h2>
+    <p>Az alábbi táblázat tartalmazza a kiválasztott apák és anyák szimulált párosításainak összesített eredményeit
+        (Várható utód BTE).</p>
+
+    <table>
+        <thead>
+            <tr>
+                <th width="15%">Apa azonosító</th>
+                <th width="35%">Apa tenyészet</th>
+                <th width="10%">Apa szül. év</th>
+                <th width="10%">Apa BTE</th>
+                <th width="10%">Várható utód BTE (átlag)</th>
+                <th width="10%">Utód BTE (min)</th>
+                <th width="10%">Utód BTE (max)</th>
+            </tr>
+        </thead>
+        <tbody>
+            {% for sire in summary_data %}
+            <tr class="{% if sire.avg_offspring_ibc == lowest_avg %}lowest-avg{% endif %}">
+                <td valign="middle">{{ sire.sire_id }}</td>
+                <td valign="middle">{{ sire.sire_farm }}</td>
+                <td valign="middle">{{ sire.sire_birth_year }}</td>
+                <td valign="middle">{{ "%.4f"|format(sire.sire_ibc) }}</td>
+                <td valign="middle">{{ "%.4f"|format(sire.avg_offspring_ibc) }}</td>
+                <td valign="middle">{{ "%.4f"|format(sire.min_offspring_ibc) }}</td>
+                <td valign="middle">{{ "%.4f"|format(sire.max_offspring_ibc) }}</td>
+            </tr>
+            {% endfor %}
+        </tbody>
+    </table>
+
+    <div id="footerContent">
+        <div style="text-align: right;">
+            Oldal: <pdf:pagenumber> / <pdf:pagecount>
+        </div>
+    </div>
+</body>
+
+</html>

@@ -2,30 +2,36 @@
 endblock %} {% block content %}
 <style>
   :root {
-    --selected-row-bg: #bee1f8; /* Softer, more harmonious blue */
+    --selected-row-bg: #bee1f8;
+    /* Softer, more harmonious blue */
   }
+
   .mating-container {
     display: flex;
     flex-direction: column;
     gap: 3rem;
   }
+
   .selector-section {
     border: 1px solid #ccc;
     border-radius: var(--border-radius);
     padding: 1.5rem;
     background-color: #fff;
   }
+
   .selector-section h2 {
     margin-top: 0;
     padding-bottom: 0.5rem;
     border-bottom: 2px solid var(--primary-color);
   }
+
   .selector-grid {
     display: grid;
     grid-template-columns: 1fr auto 1fr;
     gap: 1rem;
     align-items: center;
   }
+
   .grid-panel {
     border: 1px solid #ddd;
     border-radius: var(--border-radius);
@@ -33,6 +39,7 @@ endblock %} {% block content %}
     display: flex;
     flex-direction: column;
   }
+
   .grid-header {
     padding: 0.5rem 1rem;
     background-color: #f7f7f7;
@@ -42,24 +49,29 @@ endblock %} {% block content %}
     font-weight: bold;
     color: #333;
   }
+
   .farm-filter {
     flex-grow: 1;
   }
+
   .farm-filter select {
     width: 100%;
     padding: 8px;
     border-radius: var(--border-radius);
     border: 1px solid #ccc;
   }
+
   .animal-grid {
-    height: 300px;
+    height: 500px;
     overflow-y: auto;
   }
+
   .transfer-buttons {
     display: flex;
     flex-direction: column;
     gap: 0.5rem;
   }
+
   .transfer-buttons button {
     padding: 10px;
     cursor: pointer;
@@ -70,6 +82,7 @@ endblock %} {% block content %}
     font-size: 1.2rem;
     line-height: 1;
   }
+
   .transfer-buttons button:hover {
     background-color: var(--primary-color);
   }
@@ -78,12 +91,15 @@ endblock %} {% block content %}
     width: 100%;
     border-collapse: collapse;
   }
+
   th,
   td {
-    padding: 10px;
+    padding: 4px 8px;
+    font-size: 0.85em;
     text-align: left;
     border-bottom: 1px solid #ddd;
   }
+
   th {
     background-color: #f2f2f2;
     cursor: pointer;
@@ -91,26 +107,33 @@ endblock %} {% block content %}
     top: 0;
     user-select: none;
   }
+
   th:hover {
     background-color: #e9e9e9;
   }
+
   th .sort-indicator {
     display: inline-block;
     width: 1em;
     text-align: left;
   }
+
   th.sort-asc .sort-indicator::after {
     content: " ▲";
   }
+
   th.sort-desc .sort-indicator::after {
     content: " ▼";
   }
+
   tr.selected-row {
     background-color: var(--selected-row-bg);
   }
+
   tbody tr {
     cursor: pointer;
   }
+
   tbody input[type="checkbox"] {
     pointer-events: none;
   }
@@ -185,17 +208,14 @@ endblock %} {% block content %}
 
 <div class="container">
   <div style="margin-bottom: 1rem">
-    <button
-      onclick="window.location.href='/?session_id={{ session_id }}'"
-      class="button"
-      style="background-color: #6c757d"
-    >
-      ← Vissza az adatrácshoz
+    <button onclick="window.location.href='{{ url_for('main.view_pedigree') }}?session_id={{ session_id }}'"
+      class="button" style="background-color: #6c757d">
+      ← Vissza a pedigréhez
     </button>
   </div>
   <h1>Párosítási kiválasztás</h1>
   <p>
-    Válassza ki a törzsállatokat a szimulációhoz. Bal oldalon láthatók a farm
+    Válassza ki a törzsállatokat a szimulációhoz. Bal oldalon láthatók a tenyészet
     szerint szűrt, elérhető törzsállatok. Jobb oldalon a párosításhoz
     kiválasztott állatok listája.
   </p>
@@ -212,7 +232,9 @@ endblock %} {% block content %}
               <select id="dam-farm-filter"></select>
             </div>
           </div>
-          <div class="animal-grid"><table id="dam-available-grid"></table></div>
+          <div class="animal-grid">
+            <table id="dam-available-grid"></table>
+          </div>
         </div>
         <div class="transfer-buttons">
           <button id="add-dam-btn" title="Kiválasztottak hozzáadása">
@@ -226,7 +248,9 @@ endblock %} {% block content %}
           <div class="grid-header">
             Kiválasztott anyák <span id="dam-selected-count">(0)</span>
           </div>
-          <div class="animal-grid"><table id="dam-selected-grid"></table></div>
+          <div class="animal-grid">
+            <table id="dam-selected-grid"></table>
+          </div>
         </div>
       </div>
     </div>
@@ -258,7 +282,9 @@ endblock %} {% block content %}
           <div class="grid-header">
             Kiválasztott apák <span id="sire-selected-count">(0)</span>
           </div>
-          <div class="animal-grid"><table id="sire-selected-grid"></table></div>
+          <div class="animal-grid">
+            <table id="sire-selected-grid"></table>
+          </div>
         </div>
       </div>
     </div>
@@ -266,16 +292,11 @@ endblock %} {% block content %}
 
   <!-- Action Buttons -->
   <div class="action-buttons-container">
-    <form
-      id="results-form"
-      method="POST"
-      action="{{ url_for('main.simulation_results') }}"
-      style="margin: 0"
-    >
+    <form id="results-form" method="POST" action="{{ url_for('main.simulation_results') }}" style="margin: 0">
       <input type="hidden" name="session_id" value="{{ session_id }}" />
       <input type="hidden" id="results_sire_ids" name="sire_ids" />
       <input type="hidden" id="results_dam_ids" name="dam_ids" />
-      <button type="submit" class="button">Eredmények Megtekintése</button>
+      <button type="submit" class="button">Párosítások számítása</button>
     </form>
   </div>
 </div>
@@ -316,8 +337,22 @@ endblock %} {% block content %}
       sireFarms = data.sire_farms || [];
       damFarms = data.dam_farms || [];
 
+      // Restore selections from sessionStorage if present
+      const savedSires = sessionStorage.getItem(`selected_sires_${SESSION_ID}`);
+      const savedDams = sessionStorage.getItem(`selected_dams_${SESSION_ID}`);
+
+      if (savedSires) {
+        const sireIds = new Set(JSON.parse(savedSires));
+        selectedSires = allSires.filter(a => sireIds.has(a.animal_id));
+      }
+      if (savedDams) {
+        const damIds = new Set(JSON.parse(savedDams));
+        selectedDams = allDams.filter(a => damIds.has(a.animal_id));
+      }
+
       setupSelector("dam", allDams, selectedDams, damFarms);
       setupSelector("sire", allSires, selectedSires, sireFarms);
+      updateActionForms();
     }
 
     async function fetchAnimals() {
@@ -522,11 +557,17 @@ endblock %} {% block content %}
     }
 
     function updateActionForms() {
-      const sireIds = selectedSires.map((a) => a.animal_id).join(",");
-      const damIds = selectedDams.map((a) => a.animal_id).join(",");
+      const sireIdsArray = selectedSires.map((a) => a.animal_id);
+      const damIdsArray = selectedDams.map((a) => a.animal_id);
+
+      const sireIds = sireIdsArray.join(",");
+      const damIds = damIdsArray.join(",");
 
       document.getElementById("results_sire_ids").value = sireIds;
       document.getElementById("results_dam_ids").value = damIds;
+
+      sessionStorage.setItem(`selected_sires_${SESSION_ID}`, JSON.stringify(sireIdsArray));
+      sessionStorage.setItem(`selected_dams_${SESSION_ID}`, JSON.stringify(damIdsArray));
     }
 
     // Handle form submission with streaming progress

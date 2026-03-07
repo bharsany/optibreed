@@ -1,0 +1,154 @@
+{% extends "base.html" %}
+
+{% block content %}
+<div class="row mb-4 align-items-center">
+    <div class="col">
+        <h2>Felhasználók kezelése</h2>
+    </div>
+    <div class="col text-end">
+        <button type="button" class="action-button"
+            onclick="document.getElementById('createUserModal').style.display='flex'">
+            Új felhasználó hozzáadása
+        </button>
+    </div>
+</div>
+
+{% with messages = get_flashed_messages(with_categories=true) %}
+{% if messages %}
+{% for category, message in messages %}
+<div class="alert alert-{{ category if category != 'message' else 'info' }}"
+    style="margin-bottom: 20px; padding: 10px; border-radius: 4px; background-color: {% if category == 'success' %}#d4edda{% elif category == 'danger' %}#f8d7da{% else %}#cce5ff{% endif %};">
+    {{ message }}
+</div>
+{% endfor %}
+{% endif %}
+{% endwith %}
+
+<div class="card">
+    <table class="table" style="width: 100%; border-collapse: collapse; margin-top: 15px;">
+        <thead>
+            <tr style="border-bottom: 2px solid #ddd; text-align: left;">
+                <th style="padding: 10px;">ID</th>
+                <th style="padding: 10px;">Név</th>
+                <th style="padding: 10px;">Email</th>
+                <th style="padding: 10px;">Cég</th>
+                <th style="padding: 10px;">Szerepkör</th>
+                <th style="padding: 10px; text-align: right;">Műveletek</th>
+            </tr>
+        </thead>
+        <tbody>
+            {% for user in users %}
+            <tr style="border-bottom: 1px solid #ddd;">
+                <td style="padding: 10px;">{{ user.id }}</td>
+                <td style="padding: 10px;">{{ user.name }}</td>
+                <td style="padding: 10px;">{{ user.email }}</td>
+                <td style="padding: 10px;">{{ user.company or '-' }}</td>
+                <td style="padding: 10px;">
+                    {% if user.is_admin %}
+                    <span
+                        style="background: #007bff; color: white; padding: 3px 8px; border-radius: 12px; font-size: 0.85em;">Admin</span>
+                    {% else %}
+                    <span
+                        style="background: #6c757d; color: white; padding: 3px 8px; border-radius: 12px; font-size: 0.85em;">Felhasználó</span>
+                    {% endif %}
+                </td>
+                <td style="padding: 10px; text-align: right;">
+                    <button class="action-button"
+                        onclick="editUser({{ user.id }}, '{{ user.name }}', '{{ user.email }}', '{{ user.company }}', {{ 'true' if user.is_admin else 'false' }})"
+                        style="font-size: 0.85em; padding: 5px 10px;">Szerkesztés</button>
+
+                    {% if user.id != current_user.id %}
+                    <form action="{{ url_for('admin.delete_user', id=user.id) }}" method="POST"
+                        style="display: inline-block;"
+                        onsubmit="return confirm('Biztosan törölni szeretnéd a felhasználót?');">
+                        <button type="submit" class="action-button"
+                            style="background-color: #dc3545; font-size: 0.85em; padding: 5px 10px;">Törlés</button>
+                    </form>
+                    {% endif %}
+                </td>
+            </tr>
+            {% endfor %}
+            {% if not users %}
+            <tr>
+                <td colspan="6" style="text-align: center; padding: 20px;">Nincsenek felhasználók.</td>
+            </tr>
+            {% endif %}
+        </tbody>
+    </table>
+</div>
+
+<!-- Modal Overlay for Create/Edit -->
+<div id="createUserModal"
+    style="display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.5); align-items: center; justify-content: center; z-index: 1000;">
+    <div style="background: white; padding: 25px; border-radius: 8px; width: 450px; max-width: 90%;">
+        <h3 id="modalTitle" style="margin-top: 0;">Felhasználó hozzáadása</h3>
+        <form id="userForm" method="POST" action="{{ url_for('admin.create_user') }}">
+            <div style="margin-bottom: 15px;">
+                <label style="display: block; margin-bottom: 5px;">Név *</label>
+                <input type="text" id="userName" name="name" required
+                    style="width: 100%; padding: 8px; border: 1px solid #ccc; border-radius: 4px;">
+            </div>
+            <div style="margin-bottom: 15px;">
+                <label style="display: block; margin-bottom: 5px;">Email *</label>
+                <input type="email" id="userEmail" name="email" required
+                    style="width: 100%; padding: 8px; border: 1px solid #ccc; border-radius: 4px;">
+            </div>
+            <div style="margin-bottom: 15px;">
+                <label style="display: block; margin-bottom: 5px;">Cég</label>
+                <input type="text" id="userCompany" name="company"
+                    style="width: 100%; padding: 8px; border: 1px solid #ccc; border-radius: 4px;">
+            </div>
+            <div style="margin-bottom: 15px;">
+                <label style="display: block; margin-bottom: 5px;">Jelszó <span id="pwdAsterisk">*</span></label>
+                <input type="password" id="userPassword" name="password" required
+                    style="width: 100%; padding: 8px; border: 1px solid #ccc; border-radius: 4px;">
+                <small id="pwdHelper" style="display: none; color: #666;">Hagyd üresen, ha nem akarod
+                    módosítani.</small>
+            </div>
+            <div style="margin-bottom: 20px;">
+                <label style="display: flex; align-items: center; cursor: pointer;">
+                    <input type="checkbox" id="userIsAdmin" name="is_admin" style="margin-right: 8px;">
+                    Adminisztrátor jogosultság
+                </label>
+            </div>
+            <div style="display: flex; justify-content: flex-end; gap: 10px;">
+                <button type="button" class="action-button" style="background-color: #6c757d;"
+                    onclick="closeModal()">Mégse</button>
+                <button type="submit" class="action-button">Mentés</button>
+            </div>
+        </form>
+    </div>
+</div>
+
+<script>
+    function closeModal() {
+        document.getElementById('createUserModal').style.display = 'none';
+
+        // Reset form for create
+        document.getElementById('modalTitle').textContent = 'Felhasználó hozzáadása';
+        document.getElementById('userForm').action = "{{ url_for('admin.create_user') }}";
+        document.getElementById('userForm').reset();
+
+        document.getElementById('userPassword').required = true;
+        document.getElementById('pwdAsterisk').style.display = 'inline';
+        document.getElementById('pwdHelper').style.display = 'none';
+    }
+
+    function editUser(id, name, email, company, isAdmin) {
+        document.getElementById('modalTitle').textContent = 'Felhasználó szerkesztése: ' + name;
+        document.getElementById('userForm').action = '/admin/users/update/' + id;
+
+        document.getElementById('userName').value = name;
+        document.getElementById('userEmail').value = email;
+        document.getElementById('userCompany').value = company !== 'None' ? company : '';
+        document.getElementById('userIsAdmin').checked = isAdmin;
+
+        // Password not required for editing
+        document.getElementById('userPassword').required = false;
+        document.getElementById('pwdAsterisk').style.display = 'none';
+        document.getElementById('pwdHelper').style.display = 'block';
+
+        document.getElementById('createUserModal').style.display = 'flex';
+    }
+</script>
+{% endblock %}

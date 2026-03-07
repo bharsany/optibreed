@@ -1,6 +1,14 @@
 {% extends 'base.html' %} {% block title %}Fájl feltöltés - OptiBreed{% endblock
 %} {% block content %}
 <style>
+  .pedigree-table th,
+  .pedigree-table td {
+    padding: 4px 8px;
+    text-align: left;
+    border-bottom: 1px solid #ddd;
+    font-size: 0.85em;
+  }
+
   .pagination-controls {
     padding: 10px 0;
     text-align: center;
@@ -146,7 +154,7 @@
   <select id="algorithm-select">
     <option value="both">Hagyományos és Meuwissen-Luo</option>
     <option value="traditional">Hagyományos</option>
-    <option value="meuwissen">Meuwissen-Luo</option>
+    <option value="meuwissen" selected>Meuwissen-Luo</option>
   </select>
   <button id="calculate-ibc" class="button">
     <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor"
