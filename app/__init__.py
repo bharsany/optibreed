@@ -1,7 +1,8 @@
 import os
-from flask import Flask
+import uuid
+from flask import Flask, session
 from flask_sqlalchemy import SQLAlchemy
-from flask_login import LoginManager
+from flask_login import LoginManager, logout_user, current_user
 from dotenv import load_dotenv
 
 # Initialize extensions globally
@@ -51,6 +52,19 @@ def create_app():
 
     # In-memory session store
     app.sessions = {}
+
+    # Generate a unique boot ID – changes on every server restart/redeploy.
+    # Any browser session that carries a different boot_id will be logged out.
+    app.boot_id = str(uuid.uuid4())
+
+    @app.before_request
+    def enforce_boot_id():
+        """Log out users whose session predates the current server boot."""
+        if current_user.is_authenticated:
+            if session.get('boot_id') != app.boot_id:
+                logout_user()
+                session.clear()
+                return  # Flask will handle redirect to login via login_required
 
     # Register blueprints
     from .routes import main_blueprint

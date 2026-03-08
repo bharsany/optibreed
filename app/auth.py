@@ -21,6 +21,8 @@ def login():
             return redirect(url_for('auth.login'))
 
         login_user(user, remember=remember)
+        # Stamp the current server boot ID so stale sessions from old deploys are rejected
+        session['boot_id'] = current_app.boot_id
         
         # Determine next page
         next_page = request.args.get('next')
