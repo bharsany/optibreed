@@ -57,68 +57,88 @@ class PedigreeCalculator:
             self.df, str(animal_id), self.F_path_cache
         )
 
+    def _get_df_map(self):
+        """Builds and caches the dictionary map for fast sire/dam lookup."""
+        if not hasattr(self, '_df_map'):
+            self._df_map = {}
+            for row in self.df.itertuples():
+                s = str(row.sire_id) if pd.notna(row.sire_id) else None
+                d = str(row.dam_id) if pd.notna(row.dam_id) else None
+                if s and s.endswith('.0'): s = s[:-2]
+                if d and d.endswith('.0'): d = d[:-2]
+                aid = str(row.animal_id)
+                if aid.endswith('.0'): aid = aid[:-2]
+                self._df_map[aid] = (s, d)
+        return self._df_map
+
+    def _get_ancestors_and_paths(self, animal_id, df_map):
+        """
+        Extracts all ancestors and calculates all path lengths to each ancestor from the given animal.
+        Returns: {ancestor_id: [path_length_1, path_length_2, ...]}
+        """
+        # Dictionary to store list of path lengths to each ancestor
+        paths_to = {}
+        
+        # Queue stores: (current_id, current_path_length)
+        queue = [(animal_id, 0)]
+        head = 0
+        
+        while head < len(queue):
+            curr, path_len = queue[head]
+            head += 1
+            
+            parents = df_map.get(curr)
+            if parents:
+                sire, dam = parents
+                if sire:
+                    if sire not in paths_to:
+                        paths_to[sire] = []
+                    paths_to[sire].append(path_len + 1)
+                    queue.append((sire, path_len + 1))
+                    
+                if dam:
+                    if dam not in paths_to:
+                        paths_to[dam] = []
+                    paths_to[dam].append(path_len + 1)
+                    queue.append((dam, path_len + 1))
+                    
+        return paths_to
+
     def calculate_coancestry(self, sire_id, dam_id):
         """
-        Calculates the coancestry between a sire and a dam, which is equivalent
-        to the inbreeding coefficient of their hypothetical offspring.
-
-        For performance during mating simulations, this method uses the fast, 
-        pre-calculated Meuwissen-Luo IBCs for the F-value of common ancestors.
+        Calculates the coancestry between a sire and a dam, matching the EXACT
+        mathematical output of the original path-based logic, but optimized heavily.
         """
-        # The sire_id and dam_id are now strings, so the int conversion is removed.
         sire_id, dam_id = str(sire_id), str(dam_id)
-
-        # A map is needed for efficient path finding.
-        df_map = {row.animal_id: (row.sire_id, row.dam_id)
-                  for row in self.df.itertuples()}
-
-        # Find all ancestors for both the sire and the dam to identify common ones.
-        q_sire, q_dam = [sire_id], [dam_id]
-        sire_ancestors, dam_ancestors = {sire_id}, {dam_id}
-
-        head = 0
-        while head < len(q_sire):
-            curr = q_sire[head]
-            head += 1
-            p = df_map.get(curr)
-            if p:
-                if pd.notna(p[0]) and p[0] not in sire_ancestors:
-                    sire_ancestors.add(p[0])
-                    q_sire.append(p[0])
-                if pd.notna(p[1]) and p[1] not in sire_ancestors:
-                    sire_ancestors.add(p[1])
-                    q_sire.append(p[1])
-
-        head = 0
-        while head < len(q_dam):
-            curr = q_dam[head]
-            head += 1
-            p = df_map.get(curr)
-            if p:
-                if pd.notna(p[0]) and p[0] not in dam_ancestors:
-                    dam_ancestors.add(p[0])
-                    q_dam.append(p[0])
-                if pd.notna(p[1]) and p[1] not in dam_ancestors:
-                    dam_ancestors.add(p[1])
-                    q_dam.append(p[1])
-
-        common_ancestors = sire_ancestors.intersection(dam_ancestors)
-
+        if sire_id.endswith('.0'): sire_id = sire_id[:-2]
+        if dam_id.endswith('.0'): dam_id = dam_id[:-2]
+        
+        df_map = self._get_df_map()
+        
+        # 1. Get all ancestors and path lengths for sire
+        sire_paths = self._get_ancestors_and_paths(sire_id, df_map)
+        # Include the sire himself as a path length of 0 to match original logic
+        # where sire could be a common ancestor to himself
+        if sire_id not in sire_paths:
+            sire_paths[sire_id] = []
+        sire_paths[sire_id].append(0)
+        
+        # 2. Get all ancestors and path lengths for dam
+        dam_paths = self._get_ancestors_and_paths(dam_id, df_map)
+        if dam_id not in dam_paths:
+            dam_paths[dam_id] = []
+        dam_paths[dam_id].append(0)
+        
+        # 3. Find common ancestors
+        common_ancestors = set(sire_paths.keys()).intersection(set(dam_paths.keys()))
+        
+        # 4. Calculate total path contributions exactly like original algorithm
         total_coancestry = 0.0
         for ancestor_id in common_ancestors:
-            # For the ancestor's own inbreeding, use the fast tabular result for performance.
             ancestor_inbreeding = self.get_inbreeding_meuwissen(ancestor_id)
-
-            # Find all paths from the sire and dam to this common ancestor.
-            sire_paths = analyzer.find_all_paths_to_ancestor(
-                df_map, sire_id, ancestor_id)
-            dam_paths = analyzer.find_all_paths_to_ancestor(
-                df_map, dam_id, ancestor_id)
-
-            # Sum the contributions for each combination of paths.
-            for n in sire_paths:
-                for m in dam_paths:
-                    total_coancestry += (0.5)**(n + m + 1) * \
-                        (1 + ancestor_inbreeding)
-
+            
+            for n in sire_paths[ancestor_id]:
+                for m in dam_paths[ancestor_id]:
+                    total_coancestry += (0.5)**(n + m + 1) * (1.0 + ancestor_inbreeding)
+                    
         return total_coancestry
