@@ -644,20 +644,23 @@
 
         const algorithm = document.getElementById("algorithm-select").value;
 
-        if (
-          (algorithm === "both" || algorithm === "traditional") &&
-          !headers.includes("ibc_traditional")
-        ) {
+        // Clean up previous IBC headers and data keys to handle switching calculations
+        headers = headers.filter(h => h !== "ibc_traditional" && h !== "ibc_meuwissen");
+        data.forEach((d) => {
+          delete d.ibc_traditional;
+          delete d.ibc_meuwissen;
+          delete d.ibc_default;
+        });
+
+        if (algorithm === "both" || algorithm === "traditional") {
           headers.push("ibc_traditional");
           data.forEach((d) => (d.ibc_traditional = "..."));
         }
-        if (
-          (algorithm === "both" || algorithm === "meuwissen") &&
-          !headers.includes("ibc_meuwissen")
-        ) {
+        if (algorithm === "both" || algorithm === "meuwissen") {
           headers.push("ibc_meuwissen");
           data.forEach((d) => (d.ibc_meuwissen = "..."));
         }
+
         data.forEach((d) => {
           if (algorithm === "both") {
             d.ibc_default =
