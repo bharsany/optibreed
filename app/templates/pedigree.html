@@ -147,7 +147,10 @@
   Vissza a főoldalra
 </a>
 
-
+<h1>Pedigré adatbázis</h1>
+{% if filename %}
+<p style="font-style: italic; color: #555; margin-top: -10px; margin-bottom: 20px;">Fájl: {{ filename }}</p>
+{% endif %}
 
 <div id="ibc-controls" style="margin-bottom: 2rem; display: none; align-items: center; gap: 1rem">
   <label for="algorithm-select" style="font-weight: bold">Válasszon algoritmust:</label>

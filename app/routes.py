@@ -88,6 +88,9 @@ def index():
         'breed_loaded': user_data.get('breed') is not None,
         'farm_loaded': user_data.get('farm') is not None,
         'pedigree_loaded': user_data.get('pedigree') is not None,
+        'breed_filename': user_data.get('breed_filename'),
+        'farm_filename': user_data.get('farm_filename'),
+        'pedigree_filename': user_data.get('pedigree_filename'),
     }
 
     return render_template('dashboard.html', status=status)
@@ -131,7 +134,9 @@ def _load_reference_data(request_file_key, expected_columns, session_key, sessio
             return f"Hiányzó oszlopok: {', '.join(missing)}", 400
             
         final_df = df[list(expected_set)].copy()
-        current_app._get_current_object().sessions[session_id][session_key] = final_df
+        sess = current_app._get_current_object().sessions[session_id]
+        sess[session_key] = final_df
+        sess[f"{session_key}_filename"] = file.filename
         return None, 200
         
     except Exception as e:
@@ -202,17 +207,31 @@ def clear_pedigree():
 def view_pedigree():
     # Renders the classic index.html (renamed to pedigree.html)
     session_id = session.get('user_session_id')
-    return render_template('pedigree.html', session_id=session_id)
+    app = current_app._get_current_object()
+    filename = None
+    if session_id in app.sessions:
+        filename = app.sessions[session_id].get('pedigree_filename')
+    return render_template('pedigree.html', session_id=session_id, filename=filename)
 
 @main_blueprint.route('/view_breeds', methods=['GET'])
 @login_required
 def view_breeds():
-    return render_template('breeds.html')
+    session_id = session.get('user_session_id')
+    app = current_app._get_current_object()
+    filename = None
+    if session_id in app.sessions:
+        filename = app.sessions[session_id].get('breed_filename')
+    return render_template('breeds.html', filename=filename)
 
 @main_blueprint.route('/view_farms', methods=['GET'])
 @login_required
 def view_farms():
-    return render_template('farms.html')
+    session_id = session.get('user_session_id')
+    app = current_app._get_current_object()
+    filename = None
+    if session_id in app.sessions:
+        filename = app.sessions[session_id].get('farm_filename')
+    return render_template('farms.html', filename=filename)
 
 @main_blueprint.route('/api/breeds', methods=['GET'])
 @login_required
@@ -252,7 +271,9 @@ def upload_and_process_stream():
         )
 
     # Read file inside request context (before creating generator)
-    file_content = request.files['pedigree_file'].read()
+    file_obj = request.files['pedigree_file']
+    filename = file_obj.filename
+    file_content = file_obj.read()
     app = current_app._get_current_object()
     session_id = session.get('user_session_id')
 
@@ -422,6 +443,7 @@ def upload_and_process_stream():
                 
             app.sessions[session_id]['data'] = final_df
             app.sessions[session_id]['pedigree'] = final_df
+            app.sessions[session_id]['pedigree_filename'] = filename
             app.sessions[session_id]['calculator'] = calculator
             app.sessions[session_id]['missing_parents'] = missing_parents
 

@@ -124,6 +124,16 @@
         display: none;
     }
 
+    .file-name-display {
+        width: 100%;
+        margin-top: 1rem;
+        color: #555;
+        font-style: italic;
+        font-size: 0.9rem;
+        display: none;
+        text-align: right;
+    }
+
     /* Modal Styles */
     .modal-overlay {
         display: none;
@@ -251,7 +261,7 @@
             <form action="{{ url_for('main.upload_breed') }}" method="post" enctype="multipart/form-data"
                 style="display:inline;">
                 <input type="file" name="breed_file" id="breed_file" accept=".csv" style="display:none;"
-                    onchange="this.form.submit()">
+                    onchange="showFileNameAndSubmit(this, 'breed-file-name')">
                 <label for="breed_file" class="button btn-upload">Feltöltés</label>
             </form>
             {% else %}
@@ -262,6 +272,10 @@
                     onclick="showConfirmModal('form-clear-breed', 'fajta szótárat', {{ status.pedigree_loaded | tojson }})">Törlés</button>
             </form>
             {% endif %}
+        </div>
+        <div id="breed-file-name" class="file-name-display" {% if status.breed_filename %}style="display: block;" {%
+            endif %}>
+            {% if status.breed_filename %}Kiválasztott fájl: {{ status.breed_filename }}{% endif %}
         </div>
     </div>
 
@@ -283,7 +297,7 @@
             <form action="{{ url_for('main.upload_farm') }}" method="post" enctype="multipart/form-data"
                 style="display:inline;">
                 <input type="file" name="farm_file" id="farm_file" accept=".csv" style="display:none;"
-                    onchange="this.form.submit()">
+                    onchange="showFileNameAndSubmit(this, 'farm-file-name')">
                 <label for="farm_file" class="button btn-upload">Feltöltés</label>
             </form>
             {% else %}
@@ -293,6 +307,10 @@
                     onclick="showConfirmModal('form-clear-farm', 'tenyészet szótárat', {{ status.pedigree_loaded | tojson }})">Törlés</button>
             </form>
             {% endif %}
+        </div>
+        <div id="farm-file-name" class="file-name-display" {% if status.farm_filename %}style="display: block;" {% endif
+            %}>
+            {% if status.farm_filename %}Kiválasztott fájl: {{ status.farm_filename }}{% endif %}
         </div>
     </div>
 
@@ -338,6 +356,10 @@
                 <div id="progress-bar">0%</div>
             </div>
             <div id="progress-status">Pedigré feltöltése...</div>
+        </div>
+        <div id="pedigree-file-name" class="file-name-display" {% if status.pedigree_filename %}style="display: block;"
+            {% endif %}>
+            {% if status.pedigree_filename %}Kiválasztott fájl: {{ status.pedigree_filename }}{% endif %}
         </div>
     </div>
 
@@ -400,9 +422,29 @@
         }
     }
 
+    function showFileNameAndSubmit(inputTag, displayId) {
+        if (inputTag.files.length > 0) {
+            const fileNameDisplay = document.getElementById(displayId);
+            if (fileNameDisplay) {
+                fileNameDisplay.textContent = "Kiválasztott fájl: " + inputTag.files[0].name;
+                fileNameDisplay.style.display = 'block';
+            }
+            // Allow UI to update before submitting
+            setTimeout(() => {
+                inputTag.form.submit();
+            }, 100);
+        }
+    }
+
     async function submitPedigreeUpload() {
         const input = document.getElementById('pedigree_file');
         if (!input || !input.files.length) return;
+
+        const fileNameDisplay = document.getElementById('pedigree-file-name');
+        if (fileNameDisplay) {
+            fileNameDisplay.textContent = "Kiválasztott fájl: " + input.files[0].name;
+            fileNameDisplay.style.display = 'block';
+        }
 
         const form = document.getElementById('upload-form-pedigree');
         const formData = new FormData(form);

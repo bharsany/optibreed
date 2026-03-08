@@ -68,6 +68,9 @@
 </a>
 
 <h1>Fajok és Fajták szótár</h1>
+{% if filename %}
+<p style="font-style: italic; color: #555; margin-top: -10px; margin-bottom: 20px;">Fájl: {{ filename }}</p>
+{% endif %}
 
 <div class="grid-container" style="display: none;">
     <div id="grid-header">
