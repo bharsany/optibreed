@@ -87,7 +87,16 @@
 </head>
 
 <body>
-    <h1>Szimulált párosítások eredménye</h1>
+    <table style="border-collapse: collapse; border: none; margin-bottom: 20px;">
+        <tr>
+            <td style="border: none; width: 80px; text-align: left; vertical-align: middle;">
+                <img src="{{ logo_path }}" alt="OptiBreed Logo" width="70" height="70">
+            </td>
+            <td style="border: none; text-align: center; vertical-align: middle; padding-right: 80px;">
+                <h1 style="margin: 0; padding: 0;">Szimulált párosítások eredménye</h1>
+            </td>
+        </tr>
+    </table>
 
     <div class="header-info">
         <strong>Intézmény / Felhasználó:</strong> {{ current_user.company }} - {{ current_user.name }}<br>

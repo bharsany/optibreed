@@ -886,10 +886,12 @@ def export_pdf():
         
         # Use the included Roboto font to support Latin Extended characters,
         # which works across both Windows and Linux deployments.
-        import os
         from flask import current_app
+        import os
         raw_font_path = os.path.join(current_app.root_path, 'static', 'Roboto-Regular.ttf')
         pdfmetrics.registerFont(TTFont('CustomArial', raw_font_path))
+        
+        logo_path = os.path.join(current_app.root_path, 'static', 'logo.png')
 
         # Render HTML string
         html_string = render_template(
@@ -898,7 +900,8 @@ def export_pdf():
             lowest_avg=lowest_avg,
             unique_dams=unique_dams,
             current_user=current_user,
-            timestamp=datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+            timestamp=datetime.now().strftime("%Y-%m-%d %H:%M:%S"),
+            logo_path=logo_path
         )
         
         # Create PDF without link_callback since we registered the font directly
