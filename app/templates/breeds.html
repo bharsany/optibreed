@@ -96,9 +96,9 @@
     <table class="pedigree-table">
         <thead>
             <tr>
-                <th>Faj (FAJ)</th>
-                <th>Fajta Kód (FAJTA_KOD)</th>
-                <th>Fajta Név (FAJTA_NEV)</th>
+                <th>Faj</th>
+                <th>Fajta kód</th>
+                <th>Fajta név</th>
             </tr>
         </thead>
         <tbody id="grid-body"></tbody>
@@ -172,7 +172,7 @@
         <tr>
           <td>${faj}</td>
           <td>${fajtaKod}</td>
-          <td>${fajtaNev}</td>
+          <td style="text-align: left;">${fajtaNev}</td>
         </tr>`;
             tableBody.innerHTML += rowHtml;
         });

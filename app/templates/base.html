@@ -139,7 +139,11 @@
 
 <body>
   <header>
-    <a href="{{ url_for('main.index') }}">Párosítási lehetőségeket tesztelő tenyésztésvezetői modul</a>
+    <a href="{{ url_for('main.index') }}" style="display: flex; align-items: center; gap: 10px;">
+      <img src="{{ url_for('static', filename='logo.png') }}" alt="Optibreed Logo"
+        style="height: 60px; background-color: transparent; padding: 0px; border-radius: 4px;">
+      Párosítási alternatívák elemzése és optimalizálása
+    </a>
     <nav style="display: flex; align-items: center;">
       {% if current_user.is_authenticated %}
       <div style="margin-right: 20px; text-align: right; line-height: 1.2;">

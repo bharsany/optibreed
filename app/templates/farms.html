@@ -81,7 +81,7 @@
                 <span id="search-status"></span>
             </div>
             <label style="font-weight: normal; font-size: 0.95rem"><input type="checkbox" id="filter-torzs" /> Csak
-                Törzstenyészet</label>
+                törzstenyészet</label>
         </div>
     </div>
 
@@ -100,10 +100,10 @@
     <table class="pedigree-table">
         <thead>
             <tr>
-                <th>Tenyészet Kód (TENYKOD)</th>
-                <th>Tenyészet Név (TENYNEV)</th>
-                <th>Helység (HELYSEG)</th>
-                <th>Törzstenyészet-e</th>
+                <th>Tenyészet kód</th>
+                <th>Tenyészet név</th>
+                <th>Helység</th>
+                <th>Törzstenyészet</th>
             </tr>
         </thead>
         <tbody id="grid-body"></tbody>
@@ -192,8 +192,8 @@
             const rowHtml = `
         <tr>
           <td>${tenykod}</td>
-          <td>${tenynev}</td>
-          <td>${helyseg}</td>
+          <td style="text-align: left;">${tenynev}</td>
+          <td style="text-align: left;">${helyseg}</td>
           <td style="text-align:center;">${torzstenyHtml}</td>
         </tr>`;
             tableBody.innerHTML += rowHtml;
