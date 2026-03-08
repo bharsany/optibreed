@@ -100,9 +100,14 @@
             </div>
             <div style="margin-bottom: 15px;">
                 <label style="display: block; margin-bottom: 5px;">Jelszó <span id="pwdAsterisk">*</span></label>
-                <input type="password" id="userPassword" name="password" required
-                    style="width: 100%; padding: 8px; border: 1px solid #ccc; border-radius: 4px;">
-                <small id="pwdHelper" style="display: none; color: #666;">Hagyd üresen, ha nem akarod
+                <div style="position: relative; display: flex; align-items: center;">
+                    <input type="password" id="userPassword" name="password" required
+                        style="width: 100%; padding: 8px; padding-right: 40px; border: 1px solid #ccc; border-radius: 4px; box-sizing: border-box;">
+                    <span id="togglePassword"
+                        style="position: absolute; right: 10px; cursor: pointer; color: #aaa; font-size: 1.2em; user-select: none;"
+                        title="Jelszó megjelenítése">&#128065;</span>
+                </div>
+                <small id="pwdHelper" style="display: none; color: #666; margin-top: 5px;">Hagyd üresen, ha nem akarod
                     módosítani.</small>
             </div>
             <div style="margin-bottom: 20px;">
@@ -121,6 +126,18 @@
 </div>
 
 <script>
+    document.addEventListener('DOMContentLoaded', function () {
+        const togglePassword = document.getElementById('togglePassword');
+        const password = document.getElementById('userPassword');
+
+        togglePassword.addEventListener('click', function (e) {
+            const type = password.getAttribute('type') === 'password' ? 'text' : 'password';
+            password.setAttribute('type', type);
+            this.style.color = type === 'password' ? '#aaa' : '#005a9c';
+            this.title = type === 'password' ? 'Jelszó megjelenítése' : 'Jelszó elrejtése';
+        });
+    });
+
     function closeModal() {
         document.getElementById('createUserModal').style.display = 'none';
 

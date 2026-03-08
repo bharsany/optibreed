@@ -3,9 +3,11 @@
 {% block content %}
 <div style="display: flex; justify-content: center; align-items: center; min-height: 70vh;">
     <div
-        style="background: white; padding: 40px; border-radius: 8px; box-shadow: 0 4px 15px rgba(0,0,0,0.1); width: 100%; max-width: 400px;">
-        <h2 style="text-align: center; margin-top: 0; color: var(--primary-color, #005a9c); margin-bottom: 30px;">
-            OptiBreed bejelentkezés</h2>
+        style="background: white; padding: 40px; border-radius: 8px; box-shadow: 0 4px 15px rgba(0,0,0,0.1); width: 100%; max-width: 400px; text-align: center;">
+        <img src="{{ url_for('static', filename='logo.png') }}" alt="Optibreed Logo"
+            style="width: 100%; height: auto; max-height: 150px; object-fit: contain; margin-bottom: 20px;">
+        <h2 style="margin-top: 0; color: var(--primary-color, #005a9c); margin-bottom: 30px;">
+            Bejelentkezés</h2>
 
         {% with messages = get_flashed_messages(with_categories=true) %}
         {% if messages %}
