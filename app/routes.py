@@ -784,28 +784,28 @@ def export_results():
         output_df = pd.DataFrame(pairings_data)
 
         output_df.rename(columns={
-            'sire_id': 'Apa Azonosító',
-            'sire_farm': 'Apa Tenyészet',
-            'sire_birth_year': 'Apa Szül. Év',
+            'sire_id': 'Apa azonosító',
+            'sire_farm': 'Apa tenyészet',
+            'sire_birth_year': 'Apa szül. év',
             'sire_ibc': 'Apa BTE',
-            'dam_id': 'Anya Azonosító',
-            'dam_farm': 'Anya Tenyészet',
-            'dam_birth_year': 'Anya Szül. Év',
+            'dam_id': 'Anya azonosító',
+            'dam_farm': 'Anya tenyészet',
+            'dam_birth_year': 'Anya szül. év',
             'dam_ibc': 'Anya BTE',
-            'offspring_ibc': 'Várható Utód BTE'
+            'offspring_ibc': 'Várható utód BTE'
         }, inplace=True)
 
         final_columns = [
-            'Apa Azonosító', 'Apa Tenyészet', 'Apa Szül. Év', 'Apa BTE',
-            'Anya Azonosító', 'Anya Tenyészet', 'Anya Szül. Év', 'Anya BTE',
-            'Várható Utód BTE'
+            'Apa azonosító', 'Apa tenyészet', 'Apa szül. év', 'Apa BTE',
+            'Anya azonosító', 'Anya tenyészet', 'Anya szül. év', 'Anya BTE',
+            'Várható utód BTE'
         ]
         output_df = output_df[final_columns]
 
         output = BytesIO()
         with pd.ExcelWriter(output, engine='openpyxl') as writer:
             output_df.to_excel(writer, index=False,
-                               sheet_name='Párosítási Eredmények')
+                               sheet_name=' Párosítási eredmények')
         output.seek(0)
 
         return send_file(

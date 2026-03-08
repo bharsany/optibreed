@@ -153,18 +153,18 @@
     <table id="results-table">
         <thead>
             <tr>
-                <th class="sortable-header" data-sort-key="sire_id">Apa Azonosító<span class="sort-indicator"></span>
+                <th class="sortable-header" data-sort-key="sire_id">Apa azonosító<span class="sort-indicator"></span>
                 </th>
-                <th class="sortable-header" data-sort-key="sire_farm">Apa Tenyészet<span class="sort-indicator"></span>
+                <th class="sortable-header" data-sort-key="sire_farm">Apa tenyészet<span class="sort-indicator"></span>
                 </th>
-                <th class="sortable-header" data-sort-key="sire_birth_year">Apa Szül. Év<span
+                <th class="sortable-header" data-sort-key="sire_birth_year">Apa szül. év<span
                         class="sort-indicator"></span></th>
                 <th class="sortable-header" data-sort-key="sire_ibc">Apa BTE<span class="sort-indicator"></span></th>
-                <th class="sortable-header" data-sort-key="avg_offspring_ibc">Várható Utód BTE (Átlag)<span
+                <th class="sortable-header" data-sort-key="avg_offspring_ibc">Várható utód BTE (átlag)<span
                         class="sort-indicator"></span></th>
-                <th class="sortable-header" data-sort-key="min_offspring_ibc">Várható Utód BTE (Min)<span
+                <th class="sortable-header" data-sort-key="min_offspring_ibc">Várható utód BTE (min)<span
                         class="sort-indicator"></span></th>
-                <th class="sortable-header" data-sort-key="max_offspring_ibc">Várható Utód BTE (Max)<span
+                <th class="sortable-header" data-sort-key="max_offspring_ibc">Várható utód BTE (max)<span
                         class="sort-indicator"></span></th>
                 <th>Művelet</th>
             </tr>
@@ -176,7 +176,7 @@
     <div id="details-modal" class="modal">
         <div class="modal-content">
             <span class="close-button">&times;</span>
-            <h2>Párosítás Részletei</h2>
+            <h2>Párosítás részletei</h2>
             <div id="modal-sire-details"></div>
             <div id="modal-summary-stats"></div>
             <hr>
@@ -339,11 +339,11 @@
         const sireData = sireSummaryData.find(s => s.sire_id === sireId);
         if (!sireData) return;
 
-        document.getElementById('modal-sire-details').innerHTML = `<strong>Apa Azonosító:</strong> ${sireData.sire_id} | <strong>Tenyészet:</strong> ${sireData.sire_farm || 'Ismeretlen'} | <strong>Szül. Év:</strong> ${sireData.sire_birth_year || 'Ismeretlen'} | <strong>Apa BTE:</strong> ${(sireData.sire_ibc || 0).toFixed(4)}`;
+        document.getElementById('modal-sire-details').innerHTML = `<strong>Apa azonosító:</strong> ${sireData.sire_id} | <strong>Tenyészet:</strong> ${sireData.sire_farm || 'Ismeretlen'} | <strong>Szül. Év:</strong> ${sireData.sire_birth_year || 'Ismeretlen'} | <strong>Apa BTE:</strong> ${(sireData.sire_ibc || 0).toFixed(4)}`;
 
-        const stats = `<strong>Átlagos Várható Utód BTE:</strong> ${(sireData.avg_offspring_ibc || 0).toFixed(4)}<br>
-                       <strong>Min Várható Utód BTE:</strong> ${(sireData.min_offspring_ibc === Infinity ? 0 : sireData.min_offspring_ibc).toFixed(4)}<br>
-                       <strong>Max Várható Utód BTE:</strong> ${(sireData.max_offspring_ibc === -Infinity ? 0 : sireData.max_offspring_ibc).toFixed(4)}`;
+        const stats = `<strong>Átlagos várható utód BTE:</strong> ${(sireData.avg_offspring_ibc || 0).toFixed(4)}<br>
+                       <strong>Min várható utód BTE:</strong> ${(sireData.min_offspring_ibc === Infinity ? 0 : sireData.min_offspring_ibc).toFixed(4)}<br>
+                       <strong>Max várható utód BTE:</strong> ${(sireData.max_offspring_ibc === -Infinity ? 0 : sireData.max_offspring_ibc).toFixed(4)}`;
         document.getElementById('modal-summary-stats').innerHTML = stats;
 
         modalCurrentPairings = sireData.pairings;

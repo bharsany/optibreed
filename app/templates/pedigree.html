@@ -187,7 +187,7 @@
   <div
     style="background:#fff; margin:3% auto; padding:2rem; border-radius:8px; width:90%; max-width:1100px; max-height:88vh; display:flex; flex-direction:column;">
     <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:1rem;">
-      <h2 style="margin:0;">Pedigré Ellenőrzés Eredményei</h2>
+      <h2 style="margin:0;">Pedigré ellenőrzés eredményei</h2>
       <button onclick="document.getElementById('validation-modal').style.display='none'" class="button"
         style="background:#ccc; color:#333">&#x2715; Bezárás</button>
     </div>
@@ -304,7 +304,7 @@
           if (issues.length === 0) {
             summary.innerHTML = '<span style="color:green; font-weight:bold;">&#10003; Az adatbázis hibátlan! Nem találtálunk semmilyen inkonzisztenciát.</span>';
           } else {
-            summary.innerHTML = `<span>Az elemzés befejezt. Összesen <strong style="color:red">${issues.length}</strong> problémát azonosított a rendszer.</span>`;
+            summary.innerHTML = `<span>Az elemzés befejeződött. Összesen <strong style="color:red">${issues.length}</strong> problémát azonosított a rendszer.</span>`;
           }
 
           const badgeColors = {
