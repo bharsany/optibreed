@@ -1,0 +1,82 @@
+{% extends 'base.html' %}
+{% block content %}
+<div class="row mb-5">
+    <div class="col-md-10 offset-md-1 text-center">
+        <h1 class="main-title mb-2"><i class="fas fa-list-check"></i> Pedigré Elemzés Eredményei</h1>
+        {% if issues|length > 0 %}
+        <p class="subtitle mt-3">Az adatbázis elemzése befejeződött: <strong class="text-danger">{{ issues|length
+                }}</strong> problémát azonosított a rendszer.</p>
+        <div class="mt-4">
+            <a href="{{ url_for('main.export_validation_excel') }}" class="btn btn-action-primary"><i
+                    class="fas fa-file-excel me-2"></i> Exportálás Excelbe</a>
+        </div>
+        {% else %}
+        <div class="alert alert-success mt-4">
+            <h4 class="alert-heading"><i class="fas fa-check-circle me-2"></i> Az adatbázis hibátlan!</h4>
+            <p>A rendszer nem talált hiányzó szülőket, nemi ellentmondásokat, ön-szülőséget vagy kökörös hivatkozásokat
+                a feltöltött családfában.</p>
+        </div>
+        {% endif %}
+    </div>
+</div>
+
+{% if issues|length > 0 %}
+<div class="row">
+    <div class="col-md-10 offset-md-1">
+        <div class="card card-custom">
+            <div class="card-body">
+                <div class="table-responsive">
+                    <table class="table table-hover table-bordered table-striped custom-table" id="issues-table">
+                        <thead>
+                            <tr>
+                                <th>Egyed ID</th>
+                                <th>Hiba Típusa</th>
+                                <th>Részletes Leírás</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {% for issue in issues %}
+                            <tr>
+                                <td class="fw-bold">{{ issue.animal_id }}</td>
+                                <td>
+                                    {% if 'Hiányzó' in issue.issue_type %}
+                                    <span class="badge bg-warning text-dark">{{ issue.issue_type }}</span>
+                                    {% elif 'körkörös' in issue.issue_type|lower or 'hurok' in issue.issue_type|lower %}
+                                    <span class="badge bg-danger">{{ issue.issue_type }}</span>
+                                    {% else %}
+                                    <span class="badge bg-secondary">{{ issue.issue_type }}</span>
+                                    {% endif %}
+                                </td>
+                                <td>{{ issue.description }}</td>
+                            </tr>
+                            {% endfor %}
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endif %}
+
+<div class="text-center mt-5 mb-5 pb-5">
+    <button onclick="window.close()" class="btn btn-secondary mt-3"><i class="fas fa-times me-2"></i> Bezárás</button>
+</div>
+
+<!-- Add simple client side pagination for long lists -->
+{% if issues|length > 50 %}
+<script>
+    document.addEventListener("DOMContentLoaded", function () {
+        // Simple datatables-like init if jQuery is available from base, else leave as simple table
+        if (typeof $ !== 'undefined' && $.fn.DataTable) {
+            $('#issues-table').DataTable({
+                "language": {
+                    "url": "//cdn.datatables.net/plug-ins/1.10.25/i18n/Hungarian.json"
+                },
+                "pageLength": 50
+            });
+        }
+    });
+</script>
+{% endif %}
+{% endblock %}

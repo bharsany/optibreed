@@ -1125,3 +1125,65 @@ def get_data():
     except Exception as e:
         current_app.logger.error(f"Error in get_data: {e}", exc_info=True)
         return jsonify({"error": f"Error retrieving data: {str(e)}"}), 500
+@main_blueprint.route('/pedigree/analyze_consistency', methods=['POST'])
+@login_required
+def analyze_consistency():
+    # Use the same session key as the rest of the app
+    session_id = session.get('user_session_id')
+    pedigree_df = None
+    if session_id and session_id in current_app.sessions:
+        session_data = current_app.sessions[session_id]
+        if 'data' in session_data and session_data['data'] is not None:
+            pedigree_df = session_data['data']
+            
+    if pedigree_df is None or pedigree_df.empty:
+        return jsonify({'success': False, 'message': 'Nincs memóriába töltve a pedigré adatbázis.'})
+
+    try:
+        from app.pedigree.validation import validate_pedigree
+        issues = validate_pedigree(pedigree_df)
+        # Store server-side in the existing app session dict to avoid cookie size limit
+        current_app.sessions[session_id]['pedigree_issues'] = issues
+        return jsonify({'success': True, 'issue_count': len(issues)})
+    except Exception as e:
+        current_app.logger.error(f"Pedigree validation error: {e}", exc_info=True)
+        return jsonify({'success': False, 'message': f'Hiba az elemzés során: {str(e)}'}), 500
+
+@main_blueprint.route('/pedigree/validation_results', methods=['GET'])
+@login_required
+def validation_results():
+    session_id = session.get('user_session_id')
+    issues = []
+    if session_id and session_id in current_app.sessions:
+        issues = current_app.sessions[session_id].get('pedigree_issues', [])
+    return render_template('pedigree/validation_results.html', issues=issues)
+
+@main_blueprint.route('/pedigree/validation_results_json', methods=['GET'])
+@login_required
+def validation_results_json():
+    session_id = session.get('user_session_id')
+    issues = []
+    if session_id and session_id in current_app.sessions:
+        issues = current_app.sessions[session_id].get('pedigree_issues', [])
+    return jsonify(issues)
+
+@main_blueprint.route('/pedigree/export_validation_excel', methods=['GET'])
+@login_required
+def export_validation_excel():
+    session_id = session.get('user_session_id')
+    issues = []
+    if session_id and session_id in current_app.sessions:
+        issues = current_app.sessions[session_id].get('pedigree_issues', [])
+    if not issues:
+        return "Nincs exportálható adat", 400
+        
+    df = pd.DataFrame(issues)
+    df.rename(columns={'animal_id': 'Egyed', 'issue_type': 'Hiba Típusa', 'description': 'Leírás'}, inplace=True)
+    
+    output = BytesIO()
+    with pd.ExcelWriter(output, engine='openpyxl') as writer:
+        df.to_excel(writer, index=False, sheet_name='Hibák')
+        
+    output.seek(0)
+    return send_file(output, download_name="pedigre_hibak.xlsx", as_attachment=True)
+
