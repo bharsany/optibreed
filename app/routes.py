@@ -862,9 +862,11 @@ def export_pdf():
         from reportlab.pdfbase import pdfmetrics
         from reportlab.pdfbase.ttfonts import TTFont
         
-        # Manually register the native Windows Arial font directly into ReportLab.
-        # This bypasses xhtml2pdf's @font-face parser and guarantees Latin Extended support.
-        raw_font_path = r"C:\Windows\Fonts\arial.ttf"
+        # Use the included Roboto font to support Latin Extended characters,
+        # which works across both Windows and Linux deployments.
+        import os
+        from flask import current_app
+        raw_font_path = os.path.join(current_app.root_path, 'static', 'Roboto-Regular.ttf')
         pdfmetrics.registerFont(TTFont('CustomArial', raw_font_path))
 
         # Render HTML string
