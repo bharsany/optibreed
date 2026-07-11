@@ -29,22 +29,43 @@
         <div class="doc-content">
             <h1>Párosítási szimuláció eredményei</h1>
             
-            <p>Miután a kalkuláció sikeresen lefutott, a rendszer megjeleníti az összes lehetséges párosítási alternatívát. Ezen az oldalon szűrheti, értékelheti és dokumentálhatja a tenyésztési javaslatokat.</p>
+            <p>Miután a kalkuláció sikeresen lefutott, a rendszer megjeleníti a szimulált párosítások eredményeit. Ezen az oldalon áttekintheti, értékelheti, részletesen elemezheti és dokumentálhatja a tenyésztési javaslatokat.</p>
 
             <h2>Az eredménytáblázat felépítése</h2>
-            <p>Minden sor egy lehetséges párosítási kombinációt képvisel az alábbi adatokkal:</p>
+            <p>A fő eredménytáblázatban minden sor egy <strong>apát (Sire)</strong> és az ahhoz tartozó összesített szimulációs mutatókat képviseli az alábbi adatokkal:</p>
             <ul>
-                <li><strong>Anya azonosítója (Anya ID):</strong> A párosításra javasolt nőstény állat fülszáma/azonosítója.</li>
-                <li><strong>Apa azonosítója (Apa ID):</strong> A párként javasolt hím tenyészállat azonosítója.</li>
-                <li><strong>Várható utód IBC (F-érték):</strong> A párosításból születendő utód számított rokontenyésztési együtthatója százalékos formában kifejezve. Minél alacsonyabb ez a szám, annál kisebb a beltenyésztés kockázata.</li>
+                <li><strong>Apa azonosító (Sire ID):</strong> A tenyésztésre javasolt hím állat egyedi azonosítója.</li>
+                <li><strong>Apa tenyészet:</strong> A tenyészapa származási vagy jelenlegi tartási helye (tenyészete).</li>
+                <li><strong>Apa szül. év:</strong> A tenyészapa születési éve.</li>
+                <li><strong>Apa BTE (F-érték):</strong> Az apa saját beltenyésztési együtthatója százalékos formában.</li>
+                <li><strong>Várható utód BTE (átlag):</strong> A kiválasztott összes anyával (Dams) tervezett szimulált párosításokból születendő várható utódok átlagos beltenyésztési együtthatója.</li>
+                <li><strong>Várható utód BTE (min):</strong> A legkisebb számított utód-BTE (az adott apával elérhető legkedvezőbb, legkisebb beltenyésztésű párosítási alternatíva).</li>
+                <li><strong>Várható utód BTE (max):</strong> A legnagyobb számított utód-BTE (az adott apával elérhető legkockázatosabb, legmagasabb beltenyésztésű párosítási alternatíva).</li>
             </ul>
 
-            <h2>Rendezés és küszöbérték-szűrés</h2>
-            <p>A tenyésztési cél az alacsony rokontenyésztettség elérése. A felületen a következő szűrési eszközök állnak rendelkezésre:</p>
+            <div class="alert alert-info">
+                <h4>🟢 Kedvező alternatívák kiemelése</h4>
+                <p>A táblázatban a legkisebb átlagos várható utód-BTE (beltenyésztési együttható) értékkel bíró apa sora (vagy sorai) <strong>zöld színnel vannak kiemelve</strong>, így azonnal látható, hogy melyik apaállat használata nyújtja a legkedvezőbb eredményt a kiválasztott nőstény állományra nézve.</p>
+            </div>
+
+            <h2>Részletes párosítások (Részletek panel)</h2>
+            <p>Ha kíváncsi egy adott apa és az egyes anyák egyedi párosítási mutatóira, kattintson az adott sor végén található <strong>Részletek...</strong> gombra. Ekkor megnyílik egy felugró ablak (modal), amely a következőket tartalmazza:</p>
             <ul>
-                <li><strong>Rendezés:</strong> A táblázat oszlopfejléceire kattintva növekvő vagy csökkenő sorrendbe rendezheti az eredményeket. A legpraktikusabb az utód rokontenyésztési együtthatója szerinti növekvő rendezés, így a legkedvezőbb párosítások kerülnek a lista elejére.</li>
-                <li><strong>Maximum IBC küszöbérték:</strong> Beállíthat egy maximális megengedett rokontenyésztési szintet (pl. <i>6.25%</i>). A rendszer elrejti az összes olyan párosítási javaslatot, amely meghaladja ezt az értéket, így csak a biztonságos alternatívák maradnak láthatóak.</li>
+                <li><strong>Az apa részletes adatai:</strong> Az apa azonosítója, tenyészete, születési éve, saját BTE-je, valamint az utódok várható BTE statisztikái (átlag, min, max).</li>
+                <li><strong>Párosítási alternatívák táblázata:</strong> Soronként mutatja az egyes anyákkal való párosítások eredményeit:
+                    <ul>
+                        <li><strong>Anya Azonosító:</strong> A nőstény tenyészállat fülszáma/azonosítója.</li>
+                        <li><strong>Anya Tenyészet:</strong> Az anyaállat tenyészete.</li>
+                        <li><strong>Anya Szül. Év:</strong> Az anyaállat születési éve.</li>
+                        <li><strong>Anya BTE:</strong> Az anyaállat saját beltenyésztési együtthatója.</li>
+                        <li><strong>Várható Utód BTE:</strong> A konkrét apa és az adott anya párosításából születendő utód számított beltenyésztési együtthatója százalékos formában kifejezve. Minél alacsonyabb, annál kisebb a beltenyésztési kockázat.</li>
+                    </ul>
+                </li>
+                <li><strong>Lapozás:</strong> Ha sok nőstény állat lett kijelölve, a részletes táblázat alatt található lapozó gombok segítségével (Előző / Következő) navigálhat az eredmények között (oldalanként 10 sor látható).</li>
             </ul>
+
+            <h2>Rendezés</h2>
+            <p>A tenyésztési cél az alacsony rokontenyésztettség elérése. Az apák fő táblázatában az oszlopfejlécekre kattintva a sorokat növekvő vagy csökkenő sorrendbe rendezheti (például a <i>Várható utód BTE (átlag)</i> vagy <i>Várható utód BTE (min)</i> szerint), így a legkedvezőbb alternatívákat könnyen a lista elejére sorolhatja.</p>
 
             <div class="alert alert-info">
                 <h4>🛈 Ajánlott értékek</h4>
@@ -52,10 +73,10 @@
             </div>
 
             <h2>Eredmények exportálása</h2>
-            <p>A tenyésztési döntések megosztására és archiválására kétféle exportálási lehetőség van:</p>
+            <p>A tenyésztési döntések megosztására, archiválására és további feldolgozására kétféle exportálási lehetőség áll rendelkezésre a jobb felső gombokkal:</p>
             <ol>
-                <li><strong>Excel exportálás:</strong> A szűrt eredménytáblázat letöltése <code>.xlsx</code> fájlként további elemzésekhez.</li>
-                <li><strong>PDF Riport generálása:</strong> Egy formázott, nyomtatható PDF dokumentum készítése a kiválasztott tenyésztési párokkal, statisztikákkal és átlagos IBC mutatókkal.</li>
+                <li><strong>Exportálás Excelbe:</strong> A teljes részletes szimulációs eredménytáblázat (minden lehetséges egyedi apa-anya párosítás külön sorban, az összes kapcsolódó adattal) letöltése <code>.xlsx</code> fájlként további elemzésekhez és egyéni szűrésekhez.</li>
+                <li><strong>Exportálás PDF-be:</strong> Egy formázott, nyomtatható PDF dokumentum készítése a szimulált párosítások eredményeivel és összesített statisztikáival.</li>
             </ol>
 
             <div class="doc-footer">

@@ -891,6 +891,22 @@ def export_pdf():
         raw_font_path = os.path.join(current_app.root_path, 'static', 'Roboto-Regular.ttf')
         pdfmetrics.registerFont(TTFont('CustomArial', raw_font_path))
         
+        # Register the custom font in reportlab's font style mapping
+        from reportlab.lib.fonts import addMapping
+        for bold in (0, 1):
+            for italic in (0, 1):
+                addMapping('customarial', bold, italic, 'CustomArial')
+                addMapping('CustomArial', bold, italic, 'CustomArial')
+                
+        # Inject the custom font into xhtml2pdf's default fonts list
+        # to prevent it from resolving via @font-face (which fails with file lock on Windows)
+        import xhtml2pdf.default
+        xhtml2pdf.default.DEFAULT_FONT['customarial'] = 'CustomArial'
+        xhtml2pdf.default.DEFAULT_FONT['customarial_00'] = 'CustomArial'
+        xhtml2pdf.default.DEFAULT_FONT['customarial_01'] = 'CustomArial'
+        xhtml2pdf.default.DEFAULT_FONT['customarial_10'] = 'CustomArial'
+        xhtml2pdf.default.DEFAULT_FONT['customarial_11'] = 'CustomArial'
+        
         logo_path = os.path.join(current_app.root_path, 'static', 'logo.png')
 
         # Render HTML string
