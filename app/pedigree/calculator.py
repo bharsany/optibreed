@@ -80,34 +80,32 @@ class PedigreeCalculator:
 
     def _get_ancestors_and_paths(self, animal_id, df_map):
         """
-        Extracts all ancestors and calculates all path lengths to each ancestor from the given animal.
-        Returns: {ancestor_id: [path_length_1, path_length_2, ...]}
+        Extracts all ancestors and calculates all paths to each ancestor from the given animal.
+        Returns: {ancestor_id: [path_1, path_2, ...]} where path is a list of nodes.
         """
-        # Dictionary to store list of path lengths to each ancestor
+        # Dictionary to store list of paths to each ancestor
         paths_to = {}
         
-        # Queue stores: (current_id, current_path_length)
-        queue = [(animal_id, 0)]
+        # Queue stores: (current_id, current_path)
+        queue = [(animal_id, [])]
         head = 0
         
         while head < len(queue):
-            curr, path_len = queue[head]
+            curr, path = queue[head]
             head += 1
+            
+            new_path = path + [curr]
+            if curr not in paths_to:
+                paths_to[curr] = []
+            paths_to[curr].append(new_path)
             
             parents = df_map.get(curr)
             if parents:
                 sire, dam = parents
                 if sire:
-                    if sire not in paths_to:
-                        paths_to[sire] = []
-                    paths_to[sire].append(path_len + 1)
-                    queue.append((sire, path_len + 1))
-                    
+                    queue.append((sire, new_path))
                 if dam:
-                    if dam not in paths_to:
-                        paths_to[dam] = []
-                    paths_to[dam].append(path_len + 1)
-                    queue.append((dam, path_len + 1))
+                    queue.append((dam, new_path))
                     
         return paths_to
 
@@ -122,30 +120,26 @@ class PedigreeCalculator:
         
         df_map = self._get_df_map()
         
-        # 1. Get all ancestors and path lengths for sire
+        # 1. Get all ancestors and paths for sire
         sire_paths = self._get_ancestors_and_paths(sire_id, df_map)
-        # Include the sire himself as a path length of 0 to match original logic
-        # where sire could be a common ancestor to himself
-        if sire_id not in sire_paths:
-            sire_paths[sire_id] = []
-        sire_paths[sire_id].append(0)
         
-        # 2. Get all ancestors and path lengths for dam
+        # 2. Get all ancestors and paths for dam
         dam_paths = self._get_ancestors_and_paths(dam_id, df_map)
-        if dam_id not in dam_paths:
-            dam_paths[dam_id] = []
-        dam_paths[dam_id].append(0)
         
         # 3. Find common ancestors
         common_ancestors = set(sire_paths.keys()).intersection(set(dam_paths.keys()))
         
-        # 4. Calculate total path contributions exactly like original algorithm
+        # 4. Calculate total path contributions correctly (no double counting)
         total_coancestry = 0.0
         for ancestor_id in common_ancestors:
             ancestor_inbreeding = self.get_inbreeding_meuwissen(ancestor_id)
             
-            for n in sire_paths[ancestor_id]:
-                for m in dam_paths[ancestor_id]:
-                    total_coancestry += (0.5)**(n + m + 1) * (1.0 + ancestor_inbreeding)
-                    
+            for s_path in sire_paths[ancestor_id]:
+                for d_path in dam_paths[ancestor_id]:
+                    # Only valid paths: intersection is exactly the common ancestor
+                    if len(set(s_path).intersection(set(d_path))) == 1:
+                        n = len(s_path) - 1
+                        m = len(d_path) - 1
+                        total_coancestry += (0.5)**(n + m + 1) * (1.0 + ancestor_inbreeding)
+                        
         return total_coancestry

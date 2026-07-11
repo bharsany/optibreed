@@ -163,7 +163,7 @@ def calculate_inbreeding_diagonal(df, progress_callback=None, core_animal_ids=No
 
 
 def find_all_paths_to_ancestor(df_map, start_id, end_id):
-    """Finds all unique paths from a start animal to a specific ancestor."""
+    """Finds all unique paths (as lists of nodes) from a start animal to a specific ancestor."""
     all_paths = []
 
     # Queue for BFS: stores tuples of (current_animal_id, path_to_current)
@@ -175,9 +175,9 @@ def find_all_paths_to_ancestor(df_map, start_id, end_id):
         # Add current animal to path
         new_path = path + [current_id]
 
-        # If we reached the target ancestor, store the path length and continue
+        # If we reached the target ancestor, store the path and continue
         if current_id == end_id:
-            all_paths.append(len(new_path) - 1)
+            all_paths.append(new_path)
             # Do not explore further up from the ancestor on this path
             continue
 
@@ -208,9 +208,6 @@ def _calculate_inbreeding_for_animal_path_based(df_map, animal_id, F_cache):
 
     sire_id, dam_id = parents
 
-    # This is not a proper coancestry calculation, but follows the classic path-method logic
-    # which finds common ancestors and sums their contributions.
-
     # Find ancestors for sire and dam
     q_sire, q_dam = [sire_id], [dam_id]
     sire_ancestors, dam_ancestors = {sire_id}, {dam_id}
@@ -237,7 +234,7 @@ def _calculate_inbreeding_for_animal_path_based(df_map, animal_id, F_cache):
             if pd.notna(p[0]) and p[0] not in dam_ancestors:
                 dam_ancestors.add(p[0])
                 q_dam.append(p[0])
-            if pd.notna(p[1]) and p[1] not in dam_ancestors:
+            if p[1] is not None and pd.notna(p[1]) and p[1] not in dam_ancestors:
                 dam_ancestors.add(p[1])
                 q_dam.append(p[1])
 
@@ -254,10 +251,13 @@ def _calculate_inbreeding_for_animal_path_based(df_map, animal_id, F_cache):
         dam_paths = find_all_paths_to_ancestor(df_map, dam_id, ancestor_id)
 
         # Sum the contributions from this ancestor
-        for n in sire_paths:
-            for m in dam_paths:
-                total_inbreeding += (0.5)**(n + m + 1) * \
-                    (1 + ancestor_inbreeding)
+        for s_path in sire_paths:
+            for d_path in dam_paths:
+                # Valid path: the only common node between sire path and dam path is the common ancestor itself.
+                if len(set(s_path).intersection(set(d_path))) == 1:
+                    n = len(s_path) - 1
+                    m = len(d_path) - 1
+                    total_inbreeding += (0.5)**(n + m + 1) * (1 + ancestor_inbreeding)
 
     F_cache[animal_id] = total_inbreeding
     return total_inbreeding

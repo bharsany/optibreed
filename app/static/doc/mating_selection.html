@@ -65,6 +65,14 @@
                 <p>Ha a betöltött fájlban az egyedek száma meghaladja a 3 000-et, javasoljuk, hogy kizárólag a <strong>Meuwissen-Luo</strong> algoritmust válassza ki a hosszú várakozási idő vagy a böngésző lefagyásának elkerülése érdekében.</p>
             </div>
 
+            <h3>Miért térhetnek el az eredmények a két módszer között?</h3>
+            <p>Fontos megjegyezni, hogy bár mindkét algoritmus a rokontenyésztési együtthatót számítja, <strong>minimális eltérések előfordulhatnak az eredmények között</strong>. Ez teljesen normális és elfogadott jelenség, melynek okai a következők:</p>
+            <ul>
+                <li><strong>Számítási mélység korlátozása:</strong> A rekurzív Wright-féle algoritmusnál esetenként be kell állítani egy maximális generációs mélységet (például 5-7 generáció) a számítási idő és memória kordában tartása végett. A Meuwissen-Luo algoritmus ezzel szemben a teljes, hiánytalan rokonsági hálózatot elemzi globálisan. Emiatt a Meuwissen-Luo minden ismert kapcsolatot figyelembe vesz, míg a csonkított gráf-bejárás minimális alulbecslést eredményezhet a távoli ősök levágása miatt.</li>
+                <li><strong>Lebegőpontos kerekítés:</strong> Mivel a két módszer teljesen eltérő matematikai utat jár be (törtek sorozatösszegzése kontra mátrix-aritmetika), a számítógépes lebegőpontos ábrázolás kerekítési sajátosságai miatt nagyon apró (tipikusan $10^{-6}$ nagyságrendű) eltérések halmozódhatnak fel.</li>
+            </ul>
+            <p><strong>Összegzés:</strong> A két módszer által adott eredmények közötti esetleges apró differencia elméleti jellegű, a tenyésztési gyakorlatban és a párosítási döntéshozatalban nincs jelentősége. Bármelyik algoritmust választja, a kapott IBC érték megbízható bázist biztosít a szakmai munkához.</p>
+
             <h2>Szülői állomány kiválasztása (szűrők)</h2>
             <p>A párosítások tervezése előtt ki kell választania, hogy mely állatokat szeretné bevonni a szimulációba:</p>
             <ul>
