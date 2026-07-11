@@ -1,0 +1,102 @@
+<!DOCTYPE html>
+<html lang="hu">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>OptiBreed Súgó - Vezérlőpult és adatfeltöltés</title>
+    <link rel="stylesheet" href="style.css">
+</head>
+<body>
+
+    <div class="doc-sidebar">
+        <h2><a href="index.html">OptiBreed Súgó</a></h2>
+        <ul>
+            <li class="nav-index"><a href="index.html">Főoldal és bevezetés</a></li>
+            <li class="nav-login"><a href="login.html">Bejelentkezés és beállítások</a></li>
+            <li class="nav-dashboard active"><a href="dashboard.html">Vezérlőpult és adatfeltöltés</a></li>
+            <li class="nav-pedigree"><a href="pedigree.html">Pedigré adatok</a></li>
+            <li class="nav-breeds"><a href="breeds.html">Fajták kezelése</a></li>
+            <li class="nav-farms"><a href="farms.html">Tenyészetek kezelése</a></li>
+            <li class="nav-mating"><a href="mating_selection.html">Párosítási tervezés</a></li>
+            <li class="nav-simulation"><a href="simulation_result.html">Szimulációs eredmények</a></li>
+            <li class="nav-validation"><a href="validation_results.html">Validációs ellenőrzések</a></li>
+            <li class="nav-admin"><a href="admin_users.html">Felhasználókezelés</a></li>
+            <li class="nav-network"><a href="network.html">Hálózati használat</a></li>
+        </ul>
+    </div>
+
+    <div class="doc-content-wrapper">
+        <div class="doc-content">
+            <h1>Vezérlőpult és adatfeltöltés</h1>
+            
+            <p>A Vezérlőpult (Főoldal) a szoftver központi irányítópultja, ahol figyelemmel kísérheti a betöltött pedigré, tenyészet- és fajtaállományok státuszát, valamint feltöltheti az elemzéshez szükséges új adatfájlokat.</p>
+
+            <h2>Adatállapotok és betöltési visszajelzések</h2>
+            <p>A szoftver külön kezeli a három alapvető adatcsoportot. A Vezérlőpulton zöld jelzések mutatják a sikeresen betöltött állományokat, és pirosak a hiányzókat:</p>
+            <table>
+                <thead>
+                    <tr>
+                        <th>Adatcsoport</th>
+                        <th>Szerep a szoftverben</th>
+                        <th>Kötelező az elemzéshez?</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    <tr>
+                        <td><strong>Fajta törzslista</strong></td>
+                        <td>A tenyésztett állatok fajtajegyzéke és kódjai.</td>
+                        <td>Igen</td>
+                    </tr>
+                    <tr>
+                        <td><strong>Tenyészet törzslista</strong></td>
+                        <td>A tenyészetek kódjai és adatai.</td>
+                        <td>Igen</td>
+                    </tr>
+                    <tr>
+                        <td><strong>Származási (Pedigré) adatok</strong></td>
+                        <td>A teljes populáció származási fája (egyedek, apák, anyák szülői adatai).</td>
+                        <td>Igen</td>
+                    </tr>
+                </tbody>
+            </table>
+
+            <h2>Excel fájlformátumok követelményei</h2>
+            <p>Az adatok importálása Excel (<code>.xlsx</code>) formátumban történik. A megfelelő elemzéshez a fájloknak tartalmazniuk kell a következő fejléceket (oszlopneveket):</p>
+            
+            <h3>1. Fajta törzslista oszlopai:</h3>
+            <ul>
+                <li><code>fajtakod</code>: A fajta egyedi numerikus vagy karakteres kódja.</li>
+                <li><code>megnevezes</code>: A fajta teljes megnevezése (pl. <i>Magyar tarka</i>).</li>
+            </ul>
+
+            <h3>2. Tenyészet törzslista oszlopai:</h3>
+            <ul>
+                <li><code>telepkod</code>: A tenyészet egyedi azonosító kódja.</li>
+                <li><code>telepnev</code>: A tenyészet megnevezése vagy elhelyezkedése.</li>
+            </ul>
+
+            <h3>3. Pedigré oszlopok:</h3>
+            <ul>
+                <li><code>azon</code>: Az egyed egyedi azonosító száma (pl. fülszám). <strong>(Kötelező)</strong></li>
+                <li><code>apa</code>: Az apa egyedi azonosító száma. <strong>(Kötelező a származás felépítéséhez)</strong></li>
+                <li><code>anya</code>: Az anya egyedi azonosító száma. <strong>(Kötelező a származás felépítéséhez)</strong></li>
+                <li><code>ivar</code>: Az egyed neme (pl. <i>ivar_nosteny</i> a nőstényeknek, <i>ivar_him</i> a hímeknek, vagy <i>N</i> / <i>H</i> kódok).</li>
+                <li><code>szuldatum</code>: Az egyed születési ideje.</li>
+            </ul>
+
+            <div class="alert alert-warning">
+                <h4>⚠️ Adatok törlése és felülírása</h4>
+                <p>Ha egy meglévő kategóriába (pl. Fajták) új fájlt tölt fel, az felülírja az aktív munkamenetben korábban tárolt adatokat. Az egyes listák melletti <strong>Törlés</strong> gombra kattintva bármikor kiürítheti a memóriából az adott szekciót.</p>
+            </div>
+
+            <h2>Feltöltési korlátok</h2>
+            <p>A szoftver legfeljebb <strong>1 GB</strong> méretű Excel fájlok feltöltését engedélyezi. Nagyobb származási fák (százezer feletti rekord) feldolgozása a memóriakapacitástól függően több másodpercet is igénybe vehet. A betöltés állapotáról egy folyamatjelző animáció tájékoztatja a felhasználót.</p>
+
+            <div class="doc-footer">
+                <p>© 2026 OptiBreed - Minden jog fenntartva.</p>
+            </div>
+        </div>
+    </div>
+
+</body>
+</html>

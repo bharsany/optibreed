@@ -11,3 +11,7 @@ venv/
 tmp/
 *.tar
 optibreed.tar
+dist/
+build/
+optibreed.spec
+*.db

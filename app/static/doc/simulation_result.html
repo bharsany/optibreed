@@ -1,0 +1,68 @@
+<!DOCTYPE html>
+<html lang="hu">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>OptiBreed Súgó - Szimulációs eredmények</title>
+    <link rel="stylesheet" href="style.css">
+</head>
+<body>
+
+    <div class="doc-sidebar">
+        <h2><a href="index.html">OptiBreed Súgó</a></h2>
+        <ul>
+            <li class="nav-index"><a href="index.html">Főoldal és bevezetés</a></li>
+            <li class="nav-login"><a href="login.html">Bejelentkezés és beállítások</a></li>
+            <li class="nav-dashboard"><a href="dashboard.html">Vezérlőpult és adatfeltöltés</a></li>
+            <li class="nav-pedigree"><a href="pedigree.html">Pedigré adatok</a></li>
+            <li class="nav-breeds"><a href="breeds.html">Fajták kezelése</a></li>
+            <li class="nav-farms"><a href="farms.html">Tenyészetek kezelése</a></li>
+            <li class="nav-mating"><a href="mating_selection.html">Párosítási tervezés</a></li>
+            <li class="nav-simulation active"><a href="simulation_result.html">Szimulációs eredmények</a></li>
+            <li class="nav-validation"><a href="validation_results.html">Validációs ellenőrzések</a></li>
+            <li class="nav-admin"><a href="admin_users.html">Felhasználókezelés</a></li>
+            <li class="nav-network"><a href="network.html">Hálózati használat</a></li>
+        </ul>
+    </div>
+
+    <div class="doc-content-wrapper">
+        <div class="doc-content">
+            <h1>Párosítási szimuláció eredményei</h1>
+            
+            <p>Miután a kalkuláció sikeresen lefutott, a rendszer megjeleníti az összes lehetséges párosítási alternatívát. Ezen az oldalon szűrheti, értékelheti és dokumentálhatja a tenyésztési javaslatokat.</p>
+
+            <h2>Az eredménytáblázat felépítése</h2>
+            <p>Minden sor egy lehetséges párosítási kombinációt képvisel az alábbi adatokkal:</p>
+            <ul>
+                <li><strong>Anya azonosítója (Anya ID):</strong> A párosításra javasolt nőstény állat fülszáma/azonosítója.</li>
+                <li><strong>Apa azonosítója (Apa ID):</strong> A párként javasolt hím tenyészállat azonosítója.</li>
+                <li><strong>Várható utód IBC (F-érték):</strong> A párosításból születendő utód számított rokontenyésztési együtthatója százalékos formában kifejezve. Minél alacsonyabb ez a szám, annál kisebb a beltenyésztés kockázata.</li>
+            </ul>
+
+            <h2>Rendezés és küszöbérték-szűrés</h2>
+            <p>A tenyésztési cél az alacsony rokontenyésztettség elérése. A felületen a következő szűrési eszközök állnak rendelkezésre:</p>
+            <ul>
+                <li><strong>Rendezés:</strong> A táblázat oszlopfejléceire kattintva növekvő vagy csökkenő sorrendbe rendezheti az eredményeket. A legpraktikusabb az utód rokontenyésztési együtthatója szerinti növekvő rendezés, így a legkedvezőbb párosítások kerülnek a lista elejére.</li>
+                <li><strong>Maximum IBC küszöbérték:</strong> Beállíthat egy maximális megengedett rokontenyésztési szintet (pl. <i>6.25%</i>). A rendszer elrejti az összes olyan párosítási javaslatot, amely meghaladja ezt az értéket, így csak a biztonságos alternatívák maradnak láthatóak.</li>
+            </ul>
+
+            <div class="alert alert-info">
+                <h4>🛈 Ajánlott értékek</h4>
+                <p>Az általános állattenyésztési gyakorlatban a <strong>6.25%</strong> alatti rokontenyésztési szint elfogadhatónak minősül, míg a <strong>12.5%</strong> feletti értékek már komoly beltenyésztési leromláshoz vezethetnek, ezért ezeket érdemes kerülni.</p>
+            </div>
+
+            <h2>Eredmények exportálása</h2>
+            <p>A tenyésztési döntések megosztására és archiválására kétféle exportálási lehetőség van:</p>
+            <ol>
+                <li><strong>Excel exportálás:</strong> A szűrt eredménytáblázat letöltése <code>.xlsx</code> fájlként további elemzésekhez.</li>
+                <li><strong>PDF Riport generálása:</strong> Egy formázott, nyomtatható PDF dokumentum készítése a kiválasztott tenyésztési párokkal, statisztikákkal és átlagos IBC mutatókkal.</li>
+            </ol>
+
+            <div class="doc-footer">
+                <p>© 2026 OptiBreed - Minden jog fenntartva.</p>
+            </div>
+        </div>
+    </div>
+
+</body>
+</html>

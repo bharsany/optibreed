@@ -1,0 +1,67 @@
+<!DOCTYPE html>
+<html lang="hu">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>OptiBreed Súgó - Bejelentkezés és beállítások</title>
+    <link rel="stylesheet" href="style.css">
+</head>
+<body>
+
+    <div class="doc-sidebar">
+        <h2><a href="index.html">OptiBreed Súgó</a></h2>
+        <ul>
+            <li class="nav-index"><a href="index.html">Főoldal és bevezetés</a></li>
+            <li class="nav-login active"><a href="login.html">Bejelentkezés és beállítások</a></li>
+            <li class="nav-dashboard"><a href="dashboard.html">Vezérlőpult és adatfeltöltés</a></li>
+            <li class="nav-pedigree"><a href="pedigree.html">Pedigré adatok</a></li>
+            <li class="nav-breeds"><a href="breeds.html">Fajták kezelése</a></li>
+            <li class="nav-farms"><a href="farms.html">Tenyészetek kezelése</a></li>
+            <li class="nav-mating"><a href="mating_selection.html">Párosítási tervezés</a></li>
+            <li class="nav-simulation"><a href="simulation_result.html">Szimulációs eredmények</a></li>
+            <li class="nav-validation"><a href="validation_results.html">Validációs ellenőrzések</a></li>
+            <li class="nav-admin"><a href="admin_users.html">Felhasználókezelés</a></li>
+            <li class="nav-network"><a href="network.html">Hálózati használat</a></li>
+        </ul>
+    </div>
+
+    <div class="doc-content-wrapper">
+        <div class="doc-content">
+            <h1>Bejelentkezés és rendszerbeállítások</h1>
+            
+            <p>Ezen a lapon a szoftver első elindításával, a kezdeti rendszergazdai fiók létrehozásával és az általános belépési folyamatokkal kapcsolatos információkat találja meg.</p>
+
+            <h2>Első indítás (rendszergazda beállítása)</h2>
+            <p>Amikor a szoftvert a telepítés vagy frissítés után legelőször indítja el, az adatbázis még nem tartalmaz felhasználói adatokat, és maga az adatbázis-fájl (<code>optibreed.db</code>) sem létezik. Ebben a fázisban a szoftver automatikusan a <strong>rendszergazda beállítása</strong> lapra irányítja át Önt.</p>
+            
+            <h3>Megadandó adatok a kezdeti beállításhoz:</h3>
+            <ul>
+                <li><strong>Teljes név:</strong> A rendszergazda teljes neve (pl. <i>Kovács János</i>).</li>
+                <li><strong>Cég / Intézmény:</strong> Az Ön cégének vagy tenyészsajátosságának megnevezése.</li>
+                <li><strong>Email cím:</strong> A későbbi bejelentkezéshez használandó adminisztrátori email (pl. <i>admin@optibreed.hu</i>).</li>
+                <li><strong>Jelszó és annak megerősítése:</strong> Legalább 6-8 karakterből álló biztonságos jelszó.</li>
+            </ul>
+
+            <div class="alert alert-warning">
+                <h4>⚠️ Fontos tudnivaló</h4>
+                <p>Amíg a kezdeti rendszergazdai fiók nem jön létre, a szoftver többi funkciója zárolva marad, és minden kérés ide irányítódik át. Amint sikeresen rákattint a <strong>Rendszer inicializálása</strong> gombra, a szoftver létrehozza az <code>optibreed.db</code> adatbázisfájlt a futtatható állomány mellett, beállítja a sémákat, és automatikusan bejelentkezteti Önt.</p>
+            </div>
+
+            <h2>Általános bejelentkezés</h2>
+            <p>A már beállított rendszerben a felhasználók a regisztrált email címükkel és jelszavukkal tudnak bejelentkezni az <code>/auth/login</code> címen keresztül.</p>
+            <ul>
+                <li><strong>Jelszó láthatósága:</strong> A jelszómező melletti szem ikonra (👁) kattintva megjelenítheti a beírt karaktereket a helyes bevitel ellenőrzéséhez.</li>
+                <li><strong>Emlékezz rám:</strong> Ha bejelöli ezt a lehetőséget, a böngésző hosszabb ideig megjegyzi a munkamenetet, így a szoftver bezárása és újra megnyitása után nem kell azonnal újra bejelentkeznie.</li>
+            </ul>
+
+            <h2>Munkamenet-biztonság (Boot ID)</h2>
+            <p>Az OptiBreed egyedi biztonsági mechanizmust alkalmaz a szerver újraindulások kezelésére. A szerver minden elindításakor generálódik egy egyedi azonosító (Boot ID). Ha a szervert (az exe fájlt) újraindítják, a korábbi munkamenetek (cookie-k) automatikusan érvénytelenné válnak, és a felhasználóknak a biztonság érdekében újra be kell jelentkezniük. Ez megakadályozza a régi, lejárt munkamenet-adatok helytelen feldolgozását.</p>
+
+            <div class="doc-footer">
+                <p>© 2026 OptiBreed - Minden jog fenntartva.</p>
+            </div>
+        </div>
+    </div>
+
+</body>
+</html>

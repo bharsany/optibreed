@@ -1,6 +1,6 @@
 import os
 import uuid
-from flask import Flask, session
+from flask import Flask, session, request, redirect, url_for
 from flask_sqlalchemy import SQLAlchemy
 from flask_login import LoginManager, logout_user, current_user
 from dotenv import load_dotenv
@@ -12,6 +12,27 @@ login_manager.login_view = 'auth.login'
 login_manager.login_message = 'Kérjük, jelentkezzen be az oldal eléréséhez.'
 
 
+def is_setup_required(app):
+    """Check if the system requires first-time admin setup."""
+    if app.config.get('SETUP_COMPLETE'):
+        return False
+    
+    db_path = app.config.get('DB_PATH')
+    if not db_path or not os.path.exists(db_path):
+        return True
+        
+    try:
+        from .models import User
+        with app.app_context():
+            admin_exists = User.query.filter_by(is_admin=True).first() is not None
+            if admin_exists:
+                app.config['SETUP_COMPLETE'] = True
+                return False
+            return True
+    except Exception:
+        return True
+
+
 def create_app():
     app = Flask(__name__)
     load_dotenv()
@@ -20,7 +41,17 @@ def create_app():
     app.config['MAX_CONTENT_LENGTH'] = 1024 * 1024 * 1024  # 1GB
     
     # Configure SQLite Database
-    app.config['SQLALCHEMY_DATABASE_URI'] = os.environ.get('DATABASE_URL', 'sqlite:///../optibreed.db')
+    import sys
+    if getattr(sys, 'frozen', False):
+        # Running as a compiled executable, database goes next to the .exe
+        base_dir = os.path.dirname(sys.executable)
+    else:
+        # Running as standard script, database goes to parent directory of app/
+        base_dir = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+        
+    db_path = os.path.join(base_dir, 'optibreed.db')
+    app.config['DB_PATH'] = db_path
+    app.config['SQLALCHEMY_DATABASE_URI'] = os.environ.get('DATABASE_URL', f'sqlite:///{db_path}')
     app.config['SQLALCHEMY_TRACK_MODIFICATIONS'] = False
 
     # Initialize extensions with the app
@@ -32,23 +63,22 @@ def create_app():
 
     @login_manager.user_loader
     def load_user(user_id):
-        return db.session.get(User, int(user_id))
+        if is_setup_required(app):
+            return None
+        try:
+            return db.session.get(User, int(user_id))
+        except Exception:
+            return None
 
-    # Initialize DB schema and create a default admin if non-existent
-    with app.app_context():
-        db.create_all()
-        # Seed default admin user
-        if not User.query.filter_by(is_admin=True).first():
-            default_admin = User(
-                name='Rendszergazda',
-                email='admin@optibreed.com',
-                company='Adminisztráció',
-                is_admin=True
-            )
-            default_admin.set_password('admin123')
-            db.session.add(default_admin)
-            db.session.commit()
-            print("Default admin created: admin@optibreed.com / admin123")
+    # We do not call db.create_all() at boot time anymore to allow clean on-demand creation.
+    # We check if setup is already complete and cache it if so.
+    try:
+        if os.path.exists(db_path):
+            with app.app_context():
+                if User.query.filter_by(is_admin=True).first() is not None:
+                    app.config['SETUP_COMPLETE'] = True
+    except Exception:
+        pass
 
     # In-memory session store
     app.sessions = {}
@@ -58,8 +88,20 @@ def create_app():
     app.boot_id = str(uuid.uuid4())
 
     @app.before_request
+    def check_setup():
+        """Redirect to setup route if database is not set up."""
+        # Allow requests to the setup endpoint, static files, and logout
+        if request.endpoint in ('auth.setup', 'static', 'auth.logout'):
+            return
+            
+        if is_setup_required(app):
+            return redirect(url_for('auth.setup'))
+
+    @app.before_request
     def enforce_boot_id():
         """Log out users whose session predates the current server boot."""
+        if is_setup_required(app):
+            return
         if current_user.is_authenticated:
             if session.get('boot_id') != app.boot_id:
                 logout_user()

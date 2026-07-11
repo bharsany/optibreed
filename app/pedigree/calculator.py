@@ -43,18 +43,25 @@ class PedigreeCalculator:
         Retrieves the pre-calculated Meuwissen-Luo inbreeding coefficient for an animal.
         Initializes the cache on first call if needed.
         """
-        # The cache keys are now strings, so we ensure the input is a string.
         self._ensure_meuwissen_initialized()
-        return self.F_meuwissen_cache.get(str(animal_id), 0.0)
+        aid = str(animal_id)
+        if aid.endswith('.0'):
+            aid = aid[:-2]
+        return self.F_meuwissen_cache.get(aid, 0.0)
 
     def get_inbreeding_traditional(self, animal_id):
         """
         Calculates the inbreeding coefficient for a single animal using the 
         traditional path-based algorithm. Caches results to speed up subsequent calls.
         """
-        # It's critical that the F_path_cache is passed to and updated by the analyzer.
-        return analyzer.calculate_inbreeding_path_based_for_animal(
-            self.df, str(animal_id), self.F_path_cache
+        aid = str(animal_id)
+        if aid.endswith('.0'):
+            aid = aid[:-2]
+        if aid in self.F_path_cache:
+            return self.F_path_cache[aid]
+        df_map = self._get_df_map()
+        return analyzer._calculate_inbreeding_for_animal_path_based(
+            df_map, aid, self.F_path_cache
         )
 
     def _get_df_map(self):

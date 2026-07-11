@@ -1,0 +1,83 @@
+<!DOCTYPE html>
+<html lang="hu">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>OptiBreed Súgó - Hálózati használat</title>
+    <link rel="stylesheet" href="style.css">
+</head>
+<body>
+
+    <div class="doc-sidebar">
+        <h2><a href="index.html">OptiBreed Súgó</a></h2>
+        <ul>
+            <li class="nav-index"><a href="index.html">Főoldal és bevezetés</a></li>
+            <li class="nav-login"><a href="login.html">Bejelentkezés és beállítások</a></li>
+            <li class="nav-dashboard"><a href="dashboard.html">Vezérlőpult és adatfeltöltés</a></li>
+            <li class="nav-pedigree"><a href="pedigree.html">Pedigré adatok</a></li>
+            <li class="nav-breeds"><a href="breeds.html">Fajták kezelése</a></li>
+            <li class="nav-farms"><a href="farms.html">Tenyészetek kezelése</a></li>
+            <li class="nav-mating"><a href="mating_selection.html">Párosítási tervezés</a></li>
+            <li class="nav-simulation"><a href="simulation_result.html">Szimulációs eredmények</a></li>
+            <li class="nav-validation"><a href="validation_results.html">Validációs ellenőrzések</a></li>
+            <li class="nav-admin"><a href="admin_users.html">Felhasználókezelés</a></li>
+            <li class="nav-network active"><a href="network.html">Hálózati használat</a></li>
+        </ul>
+    </div>
+
+    <div class="doc-content-wrapper">
+        <div class="doc-content">
+            <h1>Hálózati használat és elérés</h1>
+            
+            <p>Az OptiBreed önálló futtatható programként (.exe) egyetlen számítógépen indul el, de a beépített ipari szintű webszerverének köszönhetően lehetővé teszi, hogy <strong>a helyi hálózatban (LAN) lévő többi számítógépről is elérjék és használják</strong> a rendszert. Így nem szükséges minden gépre külön telepíteni a szoftvert, elegendő egyetlen központi "gazdagépen" elindítani azt.</p>
+
+            <h2>Hogyan érhető el a program más számítógépekről?</h2>
+            <p>Ahhoz, hogy egy másik számítógépről csatlakozzon az elindított szoftverhez, kövesse az alábbi egyszerű lépéseket:</p>
+
+            <h3>1. lépés: Keresse meg a gazdagép IP-címét</h3>
+            <p>A gazdagép az a számítógép, amelyen az <code>optibreed.exe</code> szoftvert elindította. Ennek a gépnek a helyi hálózati azonosítójára (IP-címére) lesz szükség a kapcsolódáshoz.</p>
+            <ol>
+                <li>A gazdagépen kattintson a Windows <strong>Start</strong> gombjára, gépelje be a <code>cmd</code> szót, majd nyissa meg a <strong>Parancssort</strong>.</li>
+                <li>A fekete ablakba gépelje be: <code>ipconfig</code>, majd nyomjon <strong>Enter</strong>-t.</li>
+                <li>Keresse meg az <strong>IPv4-cím (IPv4 Address)</strong> sort (ez általában <code>192.168.x.x</code> vagy <code>10.0.x.x</code> alakú szám, például: <code>192.168.1.15</code>). Ez a gazdagép címe.</li>
+            </ol>
+
+            <h3>2. lépés: Keresse meg az aktív portszámot</h3>
+            <p>Amikor az OptiBreed elindul a gazdagépen, a fekete parancssori ablakban kiírja az alkalmazott portszámot (alapértelmezetten ez a <code>18088</code>, de ha ez a port foglalt volt, a program automatikusan egy másikat választ ki, pl. <code>18089</code>).</p>
+            <p>Példa a kiírásra: <code>Starting Optibreed on port 18088...</code></p>
+
+            <h3>3. lépés: Csatlakozás a másik számítógépről</h3>
+            <ol>
+                <li>Üljön oda a másik hálózati számítógéphez, és nyisson meg egy tetszőleges internetes böngészőt (pl. Google Chrome, Microsoft Edge, Firefox).</li>
+                <li>A felső címsorba gépelje be a gazdagép IP-címét és a portszámot kettősponttal elválasztva az alábbi formában:<br>
+                    <code style="font-size: 1.15em; padding: 4px 8px;">http://[IP-CÍM]:[PORT]</code><br>
+                    Például: <strong><code>http://192.168.1.15:18088</code></strong>
+                </li>
+                <li>Nyomjon Enter-t. A bejelentkezési képernyő megjelenik, és a saját felhasználói fiókjával belépve teljes körűen használhatja a szoftvert.</li>
+            </ol>
+
+            <div class="alert alert-warning">
+                <h4>⚠️ Windows Tűzfal beállítás (Ha nem tölt be az oldal)</h4>
+                <p>Ha a másik gépen a böngésző hálózati időtúllépési hibát jelez, azt leggyakrabban a gazdagép Windows Tűzfala okozza, amely alapértelmezetten blokkolja a kívülről érkező kapcsolatokat.</p>
+                <p><strong>A probléma megoldása:</strong></p>
+                <ul>
+                    <li>A program legelső elindításakor a Windows általában feldob egy ablakot: <i>"A Windows Defender tűzfal blokkolta a szoftver egyes funkcióit..."</i>. Itt mindenképpen jelölje be a <strong>Magánhálózatok</strong> opciót, majd kattintson a <strong>Hozzáférés engedélyezése</strong> gombra.</li>
+                    <li>Ha ez elmaradt, a gazdagépen a <i>Vezérlőpult -> Windows Defender tűzfal -> Alkalmazás átengedése</i> menüpontban adjon engedélyt az OptiBreed szoftvernek (vagy engedélyezze a parancssori ablak portjának bejövő forgalmát a speciális tűzfalbeállításoknál).</li>
+                </ul>
+            </div>
+
+            <h2>Többfelhasználós biztonság</h2>
+            <ul>
+                <li><strong>Egyedi fiókok:</strong> Minden belépő munkatárs saját email címével és jelszavával léphet be a rendszerbe.</li>
+                <li><strong>Különálló munkamenetek:</strong> A munkatársak egy időben, egymástól függetlenül dolgozhatnak. Az elvégzett számítások, szűrőbeállítások és szimulációs paraméterek böngésző-munkamenethez kötöttek, így az egyidejűleg bejelentkezett felhasználók nem zavarják egymás munkáját.</li>
+                <li><strong>Központi adatbázis:</strong> Bármelyik gépről feltöltött törzskönyvi adatok, fajták vagy tenyészetek a gazdagépen lévő központi <code>optibreed.db</code> fájlba mentődnek el, így azonnal láthatóvá válnak a többi kolléga számára is.</li>
+            </ul>
+
+            <div class="doc-footer">
+                <p>© 2026 OptiBreed - Minden jog fenntartva.</p>
+            </div>
+        </div>
+    </div>
+
+</body>
+</html>

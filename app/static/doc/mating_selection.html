@@ -1,0 +1,78 @@
+<!DOCTYPE html>
+<html lang="hu">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>OptiBreed Súgó - Párosítási tervezés</title>
+    <link rel="stylesheet" href="style.css">
+</head>
+<body>
+
+    <div class="doc-sidebar">
+        <h2><a href="index.html">OptiBreed Súgó</a></h2>
+        <ul>
+            <li class="nav-index"><a href="index.html">Főoldal és bevezetés</a></li>
+            <li class="nav-login"><a href="login.html">Bejelentkezés és beállítások</a></li>
+            <li class="nav-dashboard"><a href="dashboard.html">Vezérlőpult és adatfeltöltés</a></li>
+            <li class="nav-pedigree"><a href="pedigree.html">Pedigré adatok</a></li>
+            <li class="nav-breeds"><a href="breeds.html">Fajták kezelése</a></li>
+            <li class="nav-farms"><a href="farms.html">Tenyészetek kezelése</a></li>
+            <li class="nav-mating active"><a href="mating_selection.html">Párosítási tervezés</a></li>
+            <li class="nav-simulation"><a href="simulation_result.html">Szimulációs eredmények</a></li>
+            <li class="nav-validation"><a href="validation_results.html">Validációs ellenőrzések</a></li>
+            <li class="nav-admin"><a href="admin_users.html">Felhasználókezelés</a></li>
+            <li class="nav-network"><a href="network.html">Hálózati használat</a></li>
+        </ul>
+    </div>
+
+    <div class="doc-content-wrapper">
+        <div class="doc-content">
+            <h1>Párosítási tervezés és paraméterek</h1>
+            
+            <p>A Párosítási Tervezés a szoftver legfontosabb funkcionális modulja. Ezen a felületen állíthatja be a rokontenyésztési együtthatók (IBC) kiszámításának módját, szűrheti ki a párosításra szánt nőstényeket és hímeket, és indíthatja el a szimulációs optimalizálást.</p>
+
+            <h2>Hogyan történik a rokontenyésztettség (IBC) számítása?</h2>
+            <p>A rokontenyésztési együttható (Inbreeding Coefficient - $F$) annak a valószínűsége, hogy egy egyed származásában a két azonos lókuszon lévő allél egy közös őstől származik (homozigócia származás szerint). Az OptiBreed két alapvető matematikai megközelítést biztosít ennek kiszámítására:</p>
+
+            <h3>1. Tradicionális rekurzív Wright-féle algoritmus</h3>
+            <p>Ez a klasszikus Wright-féle módszer, amely rekurzív módon térképezi fel az ősöket a származási vonalon:</p>
+            <ul>
+                <li><strong>Matematikai modell:</strong> A számítás az $F_X = \sum (1/2)^{n_1+n_2+1} (1 + F_A)$ képlet alapján történik, ahol $A$ a közös ős, $n_1$ és $n_2$ pedig a generációs lépések száma az apai és anyai ágon a közös ősig.</li>
+                <li><strong>Számítási logika:</strong> Az algoritmus minden egyes vizsgált egyednél rekurzív gráf-bejárással megkeresi az összes közös őst a családfában, kiszámítja az egyes ágak rokontenyésztettségét, majd ezeket összegzi.</li>
+                <li><strong>Mikor érdemes használni?</strong> Kisebb létszámú vagy sekélyebb származási adatsorok (néhány száz vagy ezer egyed) esetén jól átlátható és megbízható eredményt ad.</li>
+                <li><strong>Hátránya:</strong> A számítási idő exponenciálisan növekszik a családfa mélységével. Nagyobb állományoknál a rekurzív hívások száma túllépheti a memória korlátait (stack overflow) vagy rendkívül lelassíthatja a futást.</li>
+            </ul>
+
+            <h3>2. Meuwissen-Luo lineáris idejű algoritmus (ajánlott)</h3>
+            <p>Ez egy korszerű és rendkívül gyors algoritmus nagy méretű pedigrékhez, melyet Meuwissen és Luo dolgozott ki 1992-ben:</p>
+            <ul>
+                <li><strong>Matematikai modell:</strong> Nem az egyedek rekurzív származási gráf-útvonalait keresi meg. Ehelyett a teljes additív rokonsági mátrix (szokásos jelöléssel: $A$) felbontására támaszkodik. A mátrixot $A = T D T'$ alakban írja fel, ahol $T$ egy alsó háromszögmátrix (az egyedek és közvetlen szüleik közötti kapcsolatot írja le), $D$ pedig egy diagonális mátrix (amely a mendeli mintavételi varianciákat tartalmazza).</li>
+                <li><strong>Számítási logika:</strong> Kihasználja, hogy a $T^{-1}$ inverz mátrix rendkívül ritka és nagyon egyszerűen, közvetlenül felírható a szülő-utód kapcsolatok alapján. Az algoritmus így a teljes mátrix kiszámítása és tárolása nélkül, egyetlen lineáris menetben ($O(N)$ futásidővel) határozza meg a diagonális elemeket, amelyek közvetlenül megadják az egyedek rokontenyésztettségét ($F_i = A_{ii} - 1$).</li>
+                <li><strong>Mikor érdemes használni?</strong> Nagy tenyészeteknél, mély pedigréknél (több tízezer vagy akár százezer rekordnál) kötelező ezt választani.</li>
+                <li><strong>Előnye:</strong> A futásidő lineárisan (egyenes arányban) skálázódik a populáció méretével, így akár 50 000 állat kiértékelése is mindössze 1-2 másodpercig tart, minimális memóriahasználat mellett.</li>
+            </ul>
+
+            <div class="alert alert-warning">
+                <h4>⚠️ Teljesítményre vonatkozó tanács</h4>
+                <p>Ha a betöltött fájlban az egyedek száma meghaladja a 3 000-et, javasoljuk, hogy kizárólag a <strong>Meuwissen-Luo</strong> algoritmust válassza ki a hosszú várakozási idő vagy a böngésző lefagyásának elkerülése érdekében.</p>
+            </div>
+
+            <h2>Szülői állomány kiválasztása (szűrők)</h2>
+            <p>A párosítások tervezése előtt ki kell választania, hogy mely állatokat szeretné bevonni a szimulációba:</p>
+            <ul>
+                <li><strong>Nőstények szűrése:</strong> Kiválaszthatja a nőstény egyedeket (pl. anyatehenek, kocaállomány) fajta, tenyészet vagy életkor szerint. Megadhatja a törzsállományhoz való tartozás feltételét is.</li>
+                <li><strong>Hímek szűrése:</strong> Kiválaszthatja az apaállatokat (pl. tenyészbikák, kanok) hasonló szempontok szerint.</li>
+                <li><strong>Kihagyandó egyedek:</strong> Lehetőség van bizonyos azonosítók kézi kizárására is, ha azok betegség vagy egyéb okok miatt nem vehetnek részt a tenyésztésben.</li>
+            </ul>
+
+            <h2>Szimuláció indítása</h2>
+            <p>Miután beállította a tenyészpárok feltételeit és az algoritmust, kattintson a <strong>Kalkuláció futtatása</strong> gombra. A rendszer a háttérben elvégzi az összes lehetséges párosítási alternatíva elemzését, és kiszámítja a születendő utódok várható rokontenyésztési együtthatóját. A folyamat előrehaladásáról egy valós idejű betöltősáv tájékoztatja.</p>
+
+            <div class="doc-footer">
+                <p>© 2026 OptiBreed - Minden jog fenntartva.</p>
+            </div>
+        </div>
+    </div>
+
+</body>
+</html>

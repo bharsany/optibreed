@@ -1,0 +1,81 @@
+<!DOCTYPE html>
+<html lang="hu">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>OptiBreed Súgó - Felhasználókezelés</title>
+    <link rel="stylesheet" href="style.css">
+</head>
+<body>
+
+    <div class="doc-sidebar">
+        <h2><a href="index.html">OptiBreed Súgó</a></h2>
+        <ul>
+            <li class="nav-index"><a href="index.html">Főoldal és bevezetés</a></li>
+            <li class="nav-login"><a href="login.html">Bejelentkezés és beállítások</a></li>
+            <li class="nav-dashboard"><a href="dashboard.html">Vezérlőpult és adatfeltöltés</a></li>
+            <li class="nav-pedigree"><a href="pedigree.html">Pedigré adatok</a></li>
+            <li class="nav-breeds"><a href="breeds.html">Fajták kezelése</a></li>
+            <li class="nav-farms"><a href="farms.html">Tenyészetek kezelése</a></li>
+            <li class="nav-mating"><a href="mating_selection.html">Párosítási tervezés</a></li>
+            <li class="nav-simulation"><a href="simulation_result.html">Szimulációs eredmények</a></li>
+            <li class="nav-validation"><a href="validation_results.html">Validációs ellenőrzések</a></li>
+            <li class="nav-admin active"><a href="admin_users.html">Felhasználókezelés</a></li>
+            <li class="nav-network"><a href="network.html">Hálózati használat</a></li>
+        </ul>
+    </div>
+
+    <div class="doc-content-wrapper">
+        <div class="doc-content">
+            <h1>Felhasználók és jogosultságok kezelése</h1>
+            
+            <p>Az OptiBreed többfelhasználós környezetet biztosít. A hozzáférések kezelését kizárólag a rendszergazdák (Adminisztrátorok) végezhetik a <strong>Felhasználók</strong> menüponton keresztül.</p>
+
+            <h2>Felhasználói szerepkörök</h2>
+            <p>A rendszerben két fő szerepkör létezik, amelyek meghatározzák a szoftver funkcióihoz való hozzáférést:</p>
+            <table>
+                <thead>
+                    <tr>
+                        <th>Szerepkör</th>
+                        <th>Jogosultságok</th>
+                        <th>Korlátozások</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    <tr>
+                        <td><strong>Rendszergazda (Adminisztrátor)</strong></td>
+                        <td>Teljes hozzáférés a szoftver minden funkciójához, beleértve a felhasználók létrehozását, szerkesztését, jelszavuk megváltoztatását, törlését és az adatbázis kezelését.</td>
+                        <td>Nincs korlátozás.</td>
+                    </tr>
+                    <tr>
+                        <td><strong>Felhasználó</strong></td>
+                        <td>Adatok betöltése, pedigrék böngészése, párosítási szimulációk futtatása, jelentések exportálása.</td>
+                        <td>Nem érheti el a Felhasználókezelés felületét (<code>/admin</code>), nem módosíthatja mások adatait és nem hozhat létre új felhasználókat.</td>
+                    </tr>
+                </tbody>
+            </table>
+
+            <h2>Új felhasználó létrehozása</h2>
+            <p>Rendszergazdaként a felhasználók listája lapon a <strong>Felhasználó hozzáadása</strong> form kitöltésével regisztrálhat új munkatársat:</p>
+            <ul>
+                <li><strong>Név:</strong> A munkatárs teljes neve.</li>
+                <li><strong>Email cím:</strong> A bejelentkezéshez szükséges egyedi email cím.</li>
+                <li><strong>Cég:</strong> A vállalat vagy tenyészet megnevezése.</li>
+                <li><strong>Jelszó:</strong> A kezdeti biztonságos jelszó (amit a felhasználó később igény szerint megváltoztathat).</li>
+                <li><strong>Adminisztrátor checkbox:</strong> Bejelölésével teljes rendszergazdai jogot adhat az új fióknak.</li>
+            </ul>
+
+            <h2>Módosítás és törlés</h2>
+            <ul>
+                <li><strong>Szerkesztés:</strong> Megváltoztathatja a regisztrált felhasználók nevét, cégét, email címét, szerepkörét, vagy új jelszót állíthat be számukra, ha elfelejtették azt.</li>
+                <li><strong>Törlés:</strong> Véglegesen eltávolíthatja a felhasználói fiókot. A rendszer biztonsági okokból nem engedi, hogy egy rendszergazda saját magát törölje, megelőzve az adminisztrátor nélküli állapot kialakulását.</li>
+            </ul>
+
+            <div class="doc-footer">
+                <p>© 2026 OptiBreed - Minden jog fenntartva.</p>
+            </div>
+        </div>
+    </div>
+
+</body>
+</html>

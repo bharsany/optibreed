@@ -1,0 +1,72 @@
+<!DOCTYPE html>
+<html lang="hu">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>OptiBreed Súgó - Validációs ellenőrzések</title>
+    <link rel="stylesheet" href="style.css">
+</head>
+<body>
+
+    <div class="doc-sidebar">
+        <h2><a href="index.html">OptiBreed Súgó</a></h2>
+        <ul>
+            <li class="nav-index"><a href="index.html">Főoldal és bevezetés</a></li>
+            <li class="nav-login"><a href="login.html">Bejelentkezés és beállítások</a></li>
+            <li class="nav-dashboard"><a href="dashboard.html">Vezérlőpult és adatfeltöltés</a></li>
+            <li class="nav-pedigree"><a href="pedigree.html">Pedigré adatok</a></li>
+            <li class="nav-breeds"><a href="breeds.html">Fajták kezelése</a></li>
+            <li class="nav-farms"><a href="farms.html">Tenyészetek kezelése</a></li>
+            <li class="nav-mating"><a href="mating_selection.html">Párosítási tervezés</a></li>
+            <li class="nav-simulation"><a href="simulation_result.html">Szimulációs eredmények</a></li>
+            <li class="nav-validation"><a href="validation_results.html">Validációs ellenőrzések</a></li>
+            <li class="nav-admin"><a href="admin_users.html">Felhasználókezelés</a></li>
+            <li class="nav-network"><a href="network.html">Hálózati használat</a></li>
+        </ul>
+    </div>
+
+    <div class="doc-content-wrapper">
+        <div class="doc-content">
+            <h1>Validációs és konzisztencia-ellenőrzések</h1>
+            
+            <p>A pedigré adatok minősége kritikus fontosságú a rokontenyésztési együtthatók kiszámításakor. A hibás vagy hiányos adatok téves eredményekhez vezethetnek. Az OptiBreed automatikus validációs modullal rendelkezik a származási hibák feltárására.</p>
+
+            <h2>Tipikus adatkonzisztencia-hibák</h2>
+            <p>Az adatbázis betöltésekor és elemzésekor a rendszer a következő anomáliákat vizsgálja és jeleníti meg:</p>
+            
+            <h3>1. Körkörös származás (ciklusok)</h3>
+            <p>Olyan biológiailag lehetetlen helyzet, amikor egy állat szerepel a saját ősének (pl. az egyed szerepel a saját apjaként vagy nagyapjaként). Ez a hiba végtelen ciklust okozna a hagyományos rekurzív számításoknál.</p>
+            <div class="alert alert-danger">
+                <h4>🔴 Kritikus hiba</h4>
+                <p>A körkörös származási kapcsolatokat feltétlenül javítani kell a forrás Excel fájlban, különben az együtthatók kiszámítása matematikai hibához vezethet.</p>
+            </div>
+
+            <h3>2. Hiányzó szülők</h3>
+            <p>Ha egy állat apjának vagy anyjának megadott azonosítója nem szerepel önálló egyedként (rekordként) a pedigré adatbázisban. A szoftver ilyenkor automatikusan létrehoz egy virtuális, alapító egyedet ismeretlen szülőkkel, hogy a származás fája ne szakadjon meg.</p>
+            <div class="alert alert-info">
+                <h4>🛈 Automatikus kezelés</h4>
+                <p>Ezek figyelmeztetések, nem akadályozzák meg a számítást, de jelzik, hogy a származás nem teljesen feltárt.</p>
+            </div>
+
+            <h3>3. Duplikált azonosítók</h3>
+            <p>Amikor ugyanaz az azonosító (pl. fülszám) többször is szerepel a pedigré táblázatban, eltérő szülőkkel vagy adatokkal. A rendszer az első előfordulást veszi alapul, a többit hibaként jelöli.</p>
+
+            <h3>4. Nemek felcserélése (hibás ivar)</h3>
+            <p>Amikor egy egyed az egyik rekordban apaként szerepel, de az ivara nőstényként van rögzítve (vagy fordítva anyaként hím ivarral). Ezt a következetlenséget a rendszer listázza.</p>
+
+            <h2>Hogyan javíthatók a hibák?</h2>
+            <ol>
+                <li>Tekintse át a <strong>Validációs eredmények</strong> oldalon listázott hibákat.</li>
+                <li>Töltse le a hibák listáját az <strong>Excel export</strong> gomb segítségével.</li>
+                <li>Nyissa meg a saját eredeti tenyésztési Excel fájlját, és a kereső segítségével keresse meg és javítsa a hibás sorokat.</li>
+                <li>Töltse fel a javított fájlt újra a <strong>Vezérlőpulton</strong>.</li>
+            </ol>
+
+            <div class="doc-footer">
+                <p>© 2026 OptiBreed - Minden jog fenntartva.</p>
+            </div>
+        </div>
+    </div>
+
+</body>
+</html>

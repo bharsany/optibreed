@@ -156,13 +156,18 @@
         style="background-color: #28a745; margin-right: 10px;">Felhasználók</a>
       {% endif %}
       <a href="{{ url_for('main.index') }}" class="action-button" style="margin-right: 10px;">Főoldal</a>
+      <a href="#" onclick="window.open('{{ url_for('static', filename='doc/') }}{{ self.help_page()|trim }}', 'HelpWindow', 'width=1000,height=800,scrollbars=yes,resizable=yes'); return false;" class="action-button" style="background-color: #17a2b8; margin-right: 10px;">Súgó 🛈</a>
       <a href="{{ url_for('auth.logout') }}" class="action-button" style="background-color: #dc3545;">Kijelentkezés</a>
       {% else %}
+      <a href="#" onclick="window.open('{{ url_for('static', filename='doc/') }}{{ self.help_page()|trim }}', 'HelpWindow', 'width=1000,height=800,scrollbars=yes,resizable=yes'); return false;" class="action-button" style="background-color: #17a2b8; margin-right: 10px;">Súgó 🛈</a>
       <a href="{{ url_for('auth.login') }}" class="action-button">Bejelentkezés</a>
       {% endif %}
     </nav>
   </header>
   <main class="container">{% block content %}{% endblock %}</main>
+  <div style="display: none;">
+    {% block help_page %}index.html{% endblock %}
+  </div>
 </body>
 
 </html>

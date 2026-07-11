@@ -1,0 +1,89 @@
+{% extends "base.html" %}
+{% block help_page %}login.html{% endblock %}
+
+{% block content %}
+<div style="display: flex; justify-content: center; align-items: center; min-height: 80vh;">
+    <div style="background: white; padding: 40px; border-radius: 8px; box-shadow: 0 4px 15px rgba(0,0,0,0.1); width: 100%; max-width: 450px; text-align: center;">
+        <img src="{{ url_for('static', filename='logo.png') }}" alt="Optibreed Logo"
+            style="width: 100%; height: auto; max-height: 120px; object-fit: contain; margin-bottom: 20px;">
+        
+        <h2 style="margin-top: 0; color: var(--primary-color, #005a9c); margin-bottom: 10px;">Rendszergazda beállítása</h2>
+        <p style="color: #666; font-size: 0.9em; margin-bottom: 25px;">Kérjük, adja meg a kezdeti adminisztrátori fiók adatait a rendszer elindításához.</p>
+
+        {% with messages = get_flashed_messages(with_categories=true) %}
+        {% if messages %}
+        {% for category, message in messages %}
+        <div style="padding: 12px; margin-bottom: 20px; border-radius: 4px; background-color: {% if category == 'danger' %}#f8d7da{% else %}#cce5ff{% endif %}; color: {% if category == 'danger' %}#721c24{% else %}#004085{% endif %}; font-size: 0.9em; text-align: center;">
+            {{ message }}
+        </div>
+        {% endfor %}
+        {% endif %}
+        {% endwith %}
+
+        <form method="POST" action="{{ url_for('auth.setup') }}">
+            <div style="margin-bottom: 20px; text-align: left;">
+                <label for="name" style="display: block; margin-bottom: 8px; color: #555; font-weight: bold;">Teljes név <span style="color: red;">*</span></label>
+                <input id="name" name="name" type="text" placeholder="Gipsz Jakab" required autofocus
+                    style="width: 100%; padding: 12px; border: 1px solid #ccc; border-radius: 4px; box-sizing: border-box; font-size: 1em;" />
+            </div>
+
+            <div style="margin-bottom: 20px; text-align: left;">
+                <label for="company" style="display: block; margin-bottom: 8px; color: #555; font-weight: bold;">Cég / Intézmény</label>
+                <input id="company" name="company" type="text" placeholder="Cég neve"
+                    style="width: 100%; padding: 12px; border: 1px solid #ccc; border-radius: 4px; box-sizing: border-box; font-size: 1em;" />
+            </div>
+
+            <div style="margin-bottom: 20px; text-align: left;">
+                <label for="email" style="display: block; margin-bottom: 8px; color: #555; font-weight: bold;">Email cím <span style="color: red;">*</span></label>
+                <input id="email" name="email" type="email" placeholder="admin@optibreed.com" required
+                    style="width: 100%; padding: 12px; border: 1px solid #ccc; border-radius: 4px; box-sizing: border-box; font-size: 1em;" />
+            </div>
+
+            <div style="margin-bottom: 20px; text-align: left;">
+                <label for="password" style="display: block; margin-bottom: 8px; color: #555; font-weight: bold;">Jelszó <span style="color: red;">*</span></label>
+                <div style="position: relative; display: flex; align-items: center;">
+                    <input id="password" name="password" type="password" placeholder="••••••••" required
+                        style="width: 100%; padding: 12px; padding-right: 40px; border: 1px solid #ccc; border-radius: 4px; box-sizing: border-box; font-size: 1em;" />
+                    <span id="togglePassword"
+                        style="position: absolute; right: 10px; cursor: pointer; color: #aaa; font-size: 1.2em; user-select: none;"
+                        title="Jelszó megjelenítése">&#128065;</span>
+                </div>
+            </div>
+
+            <div style="margin-bottom: 30px; text-align: left;">
+                <label for="confirm_password" style="display: block; margin-bottom: 8px; color: #555; font-weight: bold;">Jelszó megerősítése <span style="color: red;">*</span></label>
+                <div style="position: relative; display: flex; align-items: center;">
+                    <input id="confirm_password" name="confirm_password" type="password" placeholder="••••••••" required
+                        style="width: 100%; padding: 12px; padding-right: 40px; border: 1px solid #ccc; border-radius: 4px; box-sizing: border-box; font-size: 1em;" />
+                    <span id="toggleConfirmPassword"
+                        style="position: absolute; right: 10px; cursor: pointer; color: #aaa; font-size: 1.2em; user-select: none;"
+                        title="Jelszó megjelenítése">&#128065;</span>
+                </div>
+            </div>
+
+            <button type="submit" class="action-button"
+                style="width: 100%; padding: 14px; font-size: 1.1em; background-color: #28a745;">Rendszer inicializálása</button>
+        </form>
+    </div>
+</div>
+
+<script>
+    const togglePassword = document.querySelector('#togglePassword');
+    const password = document.querySelector('#password');
+    togglePassword.addEventListener('click', function (e) {
+        const type = password.getAttribute('type') === 'password' ? 'text' : 'password';
+        password.setAttribute('type', type);
+        this.style.color = type === 'password' ? '#aaa' : '#005a9c';
+        this.title = type === 'password' ? 'Jelszó megjelenítése' : 'Jelszó elrejtése';
+    });
+
+    const toggleConfirmPassword = document.querySelector('#toggleConfirmPassword');
+    const confirmPassword = document.querySelector('#confirm_password');
+    toggleConfirmPassword.addEventListener('click', function (e) {
+        const type = confirmPassword.getAttribute('type') === 'password' ? 'text' : 'password';
+        confirmPassword.setAttribute('type', type);
+        this.style.color = type === 'password' ? '#aaa' : '#005a9c';
+        this.title = type === 'password' ? 'Jelszó megjelenítése' : 'Jelszó elrejtése';
+    });
+</script>
+{% endblock %}

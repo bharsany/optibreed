@@ -1,0 +1,56 @@
+<!DOCTYPE html>
+<html lang="hu">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>OptiBreed Súgó - Fajták kezelése</title>
+    <link rel="stylesheet" href="style.css">
+</head>
+<body>
+
+    <div class="doc-sidebar">
+        <h2><a href="index.html">OptiBreed Súgó</a></h2>
+        <ul>
+            <li class="nav-index"><a href="index.html">Főoldal és bevezetés</a></li>
+            <li class="nav-login"><a href="login.html">Bejelentkezés és beállítások</a></li>
+            <li class="nav-dashboard"><a href="dashboard.html">Vezérlőpult és adatfeltöltés</a></li>
+            <li class="nav-pedigree"><a href="pedigree.html">Pedigré adatok</a></li>
+            <li class="nav-breeds active"><a href="breeds.html">Fajták kezelése</a></li>
+            <li class="nav-farms"><a href="farms.html">Tenyészetek kezelése</a></li>
+            <li class="nav-mating"><a href="mating_selection.html">Párosítási tervezés</a></li>
+            <li class="nav-simulation"><a href="simulation_result.html">Szimulációs eredmények</a></li>
+            <li class="nav-validation"><a href="validation_results.html">Validációs ellenőrzések</a></li>
+            <li class="nav-admin"><a href="admin_users.html">Felhasználókezelés</a></li>
+            <li class="nav-network"><a href="network.html">Hálózati használat</a></li>
+        </ul>
+    </div>
+
+    <div class="doc-content-wrapper">
+        <div class="doc-content">
+            <h1>Fajták kezelése</h1>
+            
+            <p>Ezen az oldalon a rendszerbe betöltött fajták nyilvántartását tekintheti meg. A fajtajegyzék segít beazonosítani az állatok fajtakódjait a tenyésztési szimulációk során.</p>
+
+            <h2>Megjelenített adatok</h2>
+            <p>A fajták táblázata rendkívül egyszerű felépítésű, két fő oszlopot tartalmaz:</p>
+            <ol>
+                <li><strong>Fajtakód:</strong> A fajta rövidített egyedi azonosítója (pl. <i>12</i> vagy <i>MT</i>). Ez a kód kapcsolja össze a pedigré adatokban szereplő egyedeket a konkrét fajtával.</li>
+                <li><strong>Megnevezés:</strong> A fajta hivatalos, teljes magyar vagy nemzetközi megnevezése (pl. <i>Holstein-fríz</i>, <i>Limousin</i>, <i>Magyar tarka</i>).</li>
+            </ol>
+
+            <h2>Keresés és szűrés</h2>
+            <p>A lap tetején található keresőmező segítségével szűrhet a fajta kódja és megnevezése alapján. A táblázat azonnal frissül a begépelt szövegnek megfelelően.</p>
+
+            <div class="alert alert-info">
+                <h4>🛈 Hogyan tölthető be új fajtalista?</h4>
+                <p>Új fajtalistát a <strong>Vezérlőpulton</strong> keresztül tud feltölteni. A feltöltött Excel fájlnak tartalmaznia kell a <code>fajtakod</code> és <code>megnevezes</code> fejléceket. A meglévő fajtaállomány a Vezérlőpulton a <strong>Törlés</strong> gombbal üríthető ki.</p>
+            </div>
+
+            <div class="doc-footer">
+                <p>© 2026 OptiBreed - Minden jog fenntartva.</p>
+            </div>
+        </div>
+    </div>
+
+</body>
+</html>

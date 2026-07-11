@@ -1,0 +1,56 @@
+<!DOCTYPE html>
+<html lang="hu">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>OptiBreed Súgó - Tenyészetek kezelése</title>
+    <link rel="stylesheet" href="style.css">
+</head>
+<body>
+
+    <div class="doc-sidebar">
+        <h2><a href="index.html">OptiBreed Súgó</a></h2>
+        <ul>
+            <li class="nav-index"><a href="index.html">Főoldal és bevezetés</a></li>
+            <li class="nav-login"><a href="login.html">Bejelentkezés és beállítások</a></li>
+            <li class="nav-dashboard"><a href="dashboard.html">Vezérlőpult és adatfeltöltés</a></li>
+            <li class="nav-pedigree"><a href="pedigree.html">Pedigré adatok</a></li>
+            <li class="nav-breeds"><a href="breeds.html">Fajták kezelése</a></li>
+            <li class="nav-farms active"><a href="farms.html">Tenyészetek kezelése</a></li>
+            <li class="nav-mating"><a href="mating_selection.html">Párosítási tervezés</a></li>
+            <li class="nav-simulation"><a href="simulation_result.html">Szimulációs eredmények</a></li>
+            <li class="nav-validation"><a href="validation_results.html">Validációs ellenőrzések</a></li>
+            <li class="nav-admin"><a href="admin_users.html">Felhasználókezelés</a></li>
+            <li class="nav-network"><a href="network.html">Hálózati használat</a></li>
+        </ul>
+    </div>
+
+    <div class="doc-content-wrapper">
+        <div class="doc-content">
+            <h1>Tenyészetek kezelése</h1>
+            
+            <p>Ezen a felületen tekintheti meg a tenyésztési rendszerben nyilvántartott tenyészetek és tartási helyek listáját. A tenyészetek törzsadatai elengedhetetlenek az egyes gazdaságok közötti párosítási alternatívák tervezésénél.</p>
+
+            <h2>Megjelenített adatok</h2>
+            <p>A tenyészetek listája a következő két fő oszlopot jeleníti meg:</p>
+            <ul>
+                <li><strong>Tenyészetkód:</strong> A tenyészet egyedi kódazonosítója (pl. <i>HU123456</i> vagy <i>T01</i>). Ezzel a kóddal azonosítható a pedigré adatokban, hogy melyik állat melyik tenyészetben található.</li>
+                <li><strong>Tenyészetnév / Helyszín:</strong> A tenyészet megnevezése vagy pontos címe (pl. <i>Északi Mintatenyészet</i>, <i>Szarvasmarha-tenyészet II.</i>).</li>
+            </ul>
+
+            <h2>Keresés és szűrés</h2>
+            <p>A keresőmezőbe írva szűrhet tenyészetkód vagy név alapján. A szűrés azonnal alkalmazásra kerül a táblázat soraira.</p>
+
+            <div class="alert alert-info">
+                <h4>🛈 Hogyan tölthető be új tenyészetlista?</h4>
+                <p>Új tenyészeteket a <strong>Vezérlőpulton</strong> keresztül tölthet fel Excel formátumban (a fájlnak tartalmaznia kell a <code>telepkod</code> és <code>telepnev</code> oszlopfejléceket). A meglévő adatokat szintén a Vezérlőpulton törölheti ki a megfelelő <strong>Törlés</strong> gombbal.</p>
+            </div>
+
+            <div class="doc-footer">
+                <p>© 2026 OptiBreed - Minden jog fenntartva.</p>
+            </div>
+        </div>
+    </div>
+
+</body>
+</html>
